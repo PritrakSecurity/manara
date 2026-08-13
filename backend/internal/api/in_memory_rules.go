@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"enterprise-dlp-backend/internal/classification"
+	"manara-dlp/internal/classification"
 )
 
 // InMemoryRulesStore provides in-memory storage for classification rules (when database is unavailable)

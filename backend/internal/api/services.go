@@ -3,10 +3,10 @@ package api
 import (
 	"google.golang.org/grpc"
 
-	"enterprise-dlp-backend/internal/endpoints"
-	"enterprise-dlp-backend/internal/policy"
-	"enterprise-dlp-backend/internal/telemetry"
-	pb "enterprise-dlp-backend/pkg/grpc"
+	"manara-dlp/internal/endpoints"
+	"manara-dlp/internal/policy"
+	"manara-dlp/internal/telemetry"
+	pb "manara-dlp/pkg/grpc"
 )
 
 // RegisterServices registers all gRPC services

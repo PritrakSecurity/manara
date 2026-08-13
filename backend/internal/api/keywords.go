@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"enterprise-dlp-backend/internal/keywords"
+	"manara-dlp/internal/keywords"
 )
 
 // KeywordsHandler handles keyword API requests

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"enterprise-dlp-backend/internal/classification"
+	"manara-dlp/internal/classification"
 )
 
 // FilesHandler handles file classification API requests

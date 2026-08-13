@@ -9,7 +9,7 @@ import (
     "time"
 
     "github.com/lib/pq"
-    "enterprise-dlp-backend/internal/discovery"
+    "manara-dlp/internal/discovery"
 )
 
 // DiscoveryHandler manages nmap-based discovery API

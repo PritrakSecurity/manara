@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dlp;
 
-option go_package = "enterprise-dlp-backend/pkg/grpc";
+option go_package = "manara-dlp/pkg/grpc";
 
 // Policy Service
 service PolicyService {

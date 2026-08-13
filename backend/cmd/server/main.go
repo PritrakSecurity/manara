@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -21,14 +20,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"enterprise-dlp-backend/internal/api"
-	"enterprise-dlp-backend/internal/config"
-	"enterprise-dlp-backend/internal/db"
-	"enterprise-dlp-backend/internal/endpoints"
-	"enterprise-dlp-backend/internal/policy"
-	"enterprise-dlp-backend/internal/telemetry"
-	"enterprise-dlp-backend/internal/alerts"
-	"enterprise-dlp-backend/internal/websocket"
+	"manara-dlp/internal/api"
+	"manara-dlp/internal/config"
+	"manara-dlp/internal/db"
+	"manara-dlp/internal/endpoints"
+	"manara-dlp/internal/policy"
+	"manara-dlp/internal/telemetry"
+	"manara-dlp/internal/alerts"
+	"manara-dlp/internal/websocket"
 )
 
 var (
@@ -84,31 +83,33 @@ func main() {
 	// WebSocket origin allowlist
 	websocket.AllowedOrigins = cfg.AllowedWSOrigins
 
-	if *dbConnString == "" {
-		*dbConnString = cfg.DatabaseURL
+	// Determine the database connection string: the -db flag overrides the
+	// DATABASE_URL environment variable. A database is REQUIRED — the server
+	// refuses to start without one.
+	dbConnString := *dbConnString
+	if dbConnString == "" {
+		dbConnString = cfg.DatabaseURL
 	}
-	if *dbConnString == "" {
-		*dbConnString = "postgres://postgres:dev@localhost:5432/dlp_events?sslmode=disable"
+	if dbConnString == "" {
+		log.Fatal("FATAL: DATABASE_URL environment variable is required")
 	}
 
-	// Initialize database connection (optional for development)
-	var database *db.Connection
-	dbConn, err := db.NewConnection(*dbConnString)
+	// Initialize the database connection. A working PostgreSQL connection is
+	// required: the server fails fast instead of running in a degraded
+	// "no database" mode that hides production problems.
+	database, err := db.NewConnection(dbConnString)
 	if err != nil {
-		log.Printf("WARNING: Failed to connect to database: %v", err)
-		log.Printf("Server will start without database. Auth will work, but other features will be limited.")
-		database = nil
-	} else {
-		database = dbConn
-		defer database.Close()
-		// Run migrations
-		if err := db.RunMigrations(database); err != nil {
-			log.Printf("WARNING: Failed to run migrations: %v", err)
-		}
-		// Initialize default policies
-		if err := policy.InitializeDefaultPolicies(database.DB); err != nil {
-			log.Printf("WARNING: Failed to initialize default policies: %v", err)
-		}
+		log.Fatalf("FATAL: failed to connect to database: %v", err)
+	}
+	defer database.Close()
+
+	// Run migrations
+	if err := db.RunMigrations(database); err != nil {
+		log.Printf("WARNING: Failed to run migrations: %v", err)
+	}
+	// Initialize default policies
+	if err := policy.InitializeDefaultPolicies(database.DB); err != nil {
+		log.Printf("WARNING: Failed to initialize default policies: %v", err)
 	}
 
 	// Load TLS certificates for mTLS (optional for development)
@@ -122,31 +123,14 @@ func main() {
 		tlsConfig = tlsCfg
 	}
 
-	// Initialize services (with nil check for database)
-	var policyService *policy.Service
-	var alertService *alerts.Service
-	var telemetryService *telemetry.Service
-	var endpointService *endpoints.Service
-
-	if database != nil {
-		policyService = policy.NewService(database.DB)
-		alertService = alerts.NewService(database.DB)
-		telemetryService = telemetry.NewService(database.DB, alertService)
-		endpointService = endpoints.NewService(database.DB)
-	} else {
-		// Create dummy services for development without database
-		policyService = nil
-		alertService = nil
-		telemetryService = nil
-		endpointService = nil
-	}
+	// Initialize services backed by the database.
+	policyService := policy.NewService(database.DB)
+	alertService := alerts.NewService(database.DB)
+	telemetryService := telemetry.NewService(database.DB, alertService)
+	endpointService := endpoints.NewService(database.DB)
 
 	// Initialize device manager
-	if database != nil {
-		api.InitDeviceManager(database.DB)
-	} else {
-		api.InitDeviceManager(nil)
-	}
+	api.InitDeviceManager(database.DB)
 	log.Println("✅ Device manager initialized")
 
 	// Bootstrap the admin account from ADMIN_EMAIL / ADMIN_PASSWORD. If they are
@@ -155,9 +139,7 @@ func main() {
 	adminEmail := cfg.AdminEmail
 	adminPassword := cfg.AdminPassword
 	if adminEmail != "" && adminPassword != "" {
-		if database == nil {
-			log.Printf("WARNING: ADMIN_EMAIL/ADMIN_PASSWORD provided but no database is available; admin user was not seeded.")
-		} else if err := ensureAdminUser(database.DB, adminEmail, adminPassword); err != nil {
+		if err := ensureAdminUser(database.DB, adminEmail, adminPassword); err != nil {
 			log.Printf("WARNING: Failed to seed admin user %s: %v", adminEmail, err)
 		} else {
 			log.Printf("Admin user configured: %s", adminEmail)
@@ -293,7 +275,7 @@ func loadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
 	}
 
 	// Load CA certificate for client verification
-	caCert, err := ioutil.ReadFile(caFile)
+	caCert, err := os.ReadFile(caFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CA cert: %w", err)
 	}

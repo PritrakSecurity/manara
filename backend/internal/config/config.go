@@ -53,7 +53,7 @@ func LoadFromEnv() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DatabaseURL:      getEnv("DATABASE_URL", "postgres://postgres:dev@localhost:5432/dlp_events?sslmode=disable"),
+		DatabaseURL:      os.Getenv("DATABASE_URL"), // Required — no default; the server fails fast without it
 		JWTSecret:        jwtSecret,
 		JWTExpiryHours:   24,
 		GRPCListenAddr:   getEnv("GRPC_LISTEN_ADDR", ":50051"),

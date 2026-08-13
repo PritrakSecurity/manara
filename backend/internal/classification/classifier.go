@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"enterprise-dlp-backend/internal/keywords"
+	"manara-dlp/internal/keywords"
 	"github.com/lib/pq"
 )
 

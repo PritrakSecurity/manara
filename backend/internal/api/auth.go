@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"enterprise-dlp-backend/internal/db"
+	"manara-dlp/internal/db"
 )
 
 // JWTSecret is the server-side HMAC signing secret. It is sourced from the

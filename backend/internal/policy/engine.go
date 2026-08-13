@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"enterprise-dlp-backend/internal/approval"
-	"enterprise-dlp-backend/internal/classification"
-	"enterprise-dlp-backend/internal/keywords"
-	"enterprise-dlp-backend/internal/ownership"
+	"manara-dlp/internal/approval"
+	"manara-dlp/internal/classification"
+	"manara-dlp/internal/keywords"
+	"manara-dlp/internal/ownership"
 )
 
 // FileEvent represents a file operation event for policy evaluation

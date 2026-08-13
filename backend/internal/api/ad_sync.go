@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -520,8 +521,8 @@ func (h *DeviceHandler) TestADConnection(w http.ResponseWriter, r *http.Request)
 
 	log.Printf("🔌 Testing LDAP connection to %s:%d", req.Server, req.Port)
 
-	// Test TCP connection first
-	address := fmt.Sprintf("%s:%d", req.Server, req.Port)
+	// Test TCP connection first (JoinHostPort handles both IPv4 and IPv6)
+	address := net.JoinHostPort(req.Server, strconv.Itoa(req.Port))
 	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
 	if err != nil {
 		log.Printf("❌ LDAP connection failed: %v", err)

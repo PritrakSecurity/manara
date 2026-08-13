@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -29,7 +28,7 @@ func GetManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifestBytes, err := ioutil.ReadFile(manifestPath)
+	manifestBytes, err := os.ReadFile(manifestPath)
 	if err != nil {
 		log.Printf("[INSTALL] Failed to read manifest %s: %v", manifestPath, err)
 		http.Error(w, "failed to read agent manifest", http.StatusInternalServerError)
@@ -91,7 +90,7 @@ func GetBootstrapScript(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scriptPath := filepath.Join("internal", "api", "bootstrap.ps1")
-	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	scriptBytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		log.Printf("[INSTALL] Bootstrap script missing: %v", err)
 		http.Error(w, "Bootstrap script not found", http.StatusInternalServerError)
@@ -130,7 +129,7 @@ func GetAgentInstaller(w http.ResponseWriter, r *http.Request) {
 
 	// Read the PowerShell template file
 	scriptPath := filepath.Join("internal", "api", "agent-installer.ps1")
-	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	scriptBytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		http.Error(w, "Installer script not found", http.StatusInternalServerError)
 		return
@@ -148,7 +147,7 @@ func GetAgentInstaller(w http.ResponseWriter, r *http.Request) {
 // GetAgentDLPv2 serves the DLP v2 agent script with file blocking capabilities
 func GetAgentDLPv2(w http.ResponseWriter, r *http.Request) {
 	scriptPath := filepath.Join("internal", "api", "agent-dlp-v2.ps1")
-	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	scriptBytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		http.Error(w, "DLP v2 agent script not found", http.StatusInternalServerError)
 		return
@@ -167,7 +166,7 @@ func GetAgentDLPv3Enterprise(w http.ResponseWriter, r *http.Request) {
 	serverIP := strings.Split(serverHost, ":")[0]
 
 	scriptPath := filepath.Join("internal", "api", "agent-dlp-v3-enterprise.ps1")
-	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	scriptBytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		http.Error(w, "DLP v3 Enterprise agent script not found", http.StatusInternalServerError)
 		return
@@ -190,7 +189,7 @@ func GetAgentInstallerV3(w http.ResponseWriter, r *http.Request) {
 
 	// Read the PowerShell template file
 	scriptPath := filepath.Join("internal", "api", "agent-installer-v3.ps1")
-	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	scriptBytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		http.Error(w, "V3 Installer script not found", http.StatusInternalServerError)
 		return
@@ -214,7 +213,7 @@ func GetAgentKernelInstaller(w http.ResponseWriter, r *http.Request) {
 
 	// Read the kernel installer script
 	scriptPath := filepath.Join("internal", "api", "agent-kernel-installer.ps1")
-	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	scriptBytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		http.Error(w, "Kernel installer script not found", http.StatusInternalServerError)
 		return
@@ -241,7 +240,7 @@ func GetMinifilterDriver(w http.ResponseWriter, r *http.Request) {
 	var driverBytes []byte
 	var err error
 	for _, driverPath := range possiblePaths {
-		driverBytes, err = ioutil.ReadFile(driverPath)
+		driverBytes, err = os.ReadFile(driverPath)
 		if err == nil {
 			break
 		}
@@ -271,7 +270,7 @@ func GetWfpDriver(w http.ResponseWriter, r *http.Request) {
 	var driverBytes []byte
 	var err error
 	for _, driverPath := range possiblePaths {
-		driverBytes, err = ioutil.ReadFile(driverPath)
+		driverBytes, err = os.ReadFile(driverPath)
 		if err == nil {
 			break
 		}

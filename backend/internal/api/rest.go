@@ -12,18 +12,18 @@ import (
 	"strings"
 	"time"
 
-	"enterprise-dlp-backend/internal/alerts"
-	"enterprise-dlp-backend/internal/approval"
-	"enterprise-dlp-backend/internal/classification"
-	"enterprise-dlp-backend/internal/db"
-	"enterprise-dlp-backend/internal/discovery"
-	"enterprise-dlp-backend/internal/endpoints"
-	"enterprise-dlp-backend/internal/incidents"
-	"enterprise-dlp-backend/internal/keywords"
-	"enterprise-dlp-backend/internal/ownership"
-	"enterprise-dlp-backend/internal/policy"
-	"enterprise-dlp-backend/internal/telemetry"
-	"enterprise-dlp-backend/internal/websocket"
+	"manara-dlp/internal/alerts"
+	"manara-dlp/internal/approval"
+	"manara-dlp/internal/classification"
+	"manara-dlp/internal/db"
+	"manara-dlp/internal/discovery"
+	"manara-dlp/internal/endpoints"
+	"manara-dlp/internal/incidents"
+	"manara-dlp/internal/keywords"
+	"manara-dlp/internal/ownership"
+	"manara-dlp/internal/policy"
+	"manara-dlp/internal/telemetry"
+	"manara-dlp/internal/websocket"
 
 	"github.com/google/uuid"
 )
@@ -257,22 +257,22 @@ func NewRouter(
 		websocket.ServeWs(GlobalWSHub, w, r)
 	})
 
-	// Auth endpoints
-	mux.HandleFunc("/api/auth/login", corsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Auth endpoints (rate-limited to slow down brute-force attempts)
+	mux.HandleFunc("/api/auth/login", corsHandler(rateLimitAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			handleLogin(w, r, database)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})).ServeHTTP)
+	}))).ServeHTTP)
 
-	mux.HandleFunc("/api/auth/ldap", corsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/auth/ldap", corsHandler(rateLimitAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			handleLDAPLogin(w, r)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})).ServeHTTP)
+	}))).ServeHTTP)
 
 	// Health endpoint - no authentication required
 	mux.HandleFunc("/api/health", corsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

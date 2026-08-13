@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"enterprise-dlp-backend/internal/incidents"
+	"manara-dlp/internal/incidents"
 )
 
 // IncidentsHandler handles incident API requests

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"enterprise-dlp-backend/internal/approval"
+	"manara-dlp/internal/approval"
 )
 
 // ApprovalsHandler handles approval API requests

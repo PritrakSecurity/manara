@@ -1,0 +1,19 @@
+name: Agent CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build User-Mode Agent
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build & package agent
+        shell: pwsh
+        run: .\tools\build-and-package-agent.ps1

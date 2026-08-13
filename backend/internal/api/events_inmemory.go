@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"enterprise-dlp-backend/internal/classification"
+	"manara-dlp/internal/classification"
 
 	"github.com/google/uuid"
 )

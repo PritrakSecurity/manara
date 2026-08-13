@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"enterprise-dlp-backend/internal/classification"
+	"manara-dlp/internal/classification"
 )
 
 // ClassificationRulesHandler handles rule management APIs

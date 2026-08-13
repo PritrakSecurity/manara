@@ -11,7 +11,7 @@ import (
 
     "github.com/lib/pq"
     "github.com/google/uuid"
-    "enterprise-dlp-backend/internal/classification"
+    "manara-dlp/internal/classification"
 )
 
 type FileEvent struct {
