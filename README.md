@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/pritrak.svg" alt="Manara DLP" width="170">
+  <img src="docs/images/manara-logo.png" alt="Manara DLP" width="170">
 </p>
 
 <h1 align="center">Manara DLP</h1>
