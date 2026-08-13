@@ -1,0 +1,34 @@
+{
+  "backend": {
+    "url": "https://localhost:8443",
+    "authToken": "configure-agent-bearer-token-here",
+    "mTLS": {
+      "certPath": "C:\\ProgramData\\PritrakDLP\\agent.crt",
+      "keyPath": "C:\\ProgramData\\PritrakDLP\\agent.key",
+      "caPath": "C:\\ProgramData\\PritrakDLP\\ca.crt"
+    },
+    "retryMaxAttempts": 5,
+    "retryBackoffMs": 1000
+  },
+  "policy": {
+    "refreshIntervalSeconds": 300,
+    "localFallbackPath": "C:\\ProgramData\\PritrakDLP\\policy.json"
+  },
+  "monitoring": {
+    "enableFileSystemMonitoring": true,
+    "enableUSBMonitoring": true,
+    "enableNetworkMonitoring": true,
+    "enableClipboardMonitoring": true
+  },
+  "telemetry": {
+    "batchSizeEvents": 100,
+    "batchTimeoutSeconds": 10,
+    "offlineCachePath": "C:\\ProgramData\\PritrakDLP\\cache.db"
+  },
+  "logging": {
+    "level": "INFO",
+    "outputPath": "C:\\ProgramData\\PritrakDLP\\logs",
+    "maxFileSizeMB": 10,
+    "retentionDays": 30
+  }
+}

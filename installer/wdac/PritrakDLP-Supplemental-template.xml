@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pritrak DLP — Supplemental WDAC policy template (T2 enterprise self-sign).
+
+  This is a WDAC *supplemental* policy. It extends an existing base policy and
+  allow-lists the Pritrak DLP internal CA so that:
+    - the kernel driver (Signed by the internal CA) is permitted to load, and
+    - the user-mode agent binaries (signed by the same CA) are permitted.
+
+  Placeholders (replaced by generate-wdac-policy.ps1):
+    {BASE_POLICY_ID}        GUID of the base policy this supplements
+    {POLICY_ID}             New GUID for this supplemental policy
+    {SIGNER_ROOT_THUMBPRINT} 40-hex SHA-1 thumbprint of the internal CA root
+                              certificate (no spaces, uppercase)
+
+  Requirements:
+    - A base WDAC policy MUST already be deployed on the machine.
+    - The driver MUST be HVCI-compatible (Memory Integrity) — see
+      DEPLOYMENT-TIERS.md §5.
+    - Test on an identical VM (Secure Boot ON, HVCI ON) before rollout.
+-->
+<SiPolicy xmlns="urn:schemas-microsoft-com:sipolicy" PolicyType="Supplemental Policy" VersionEx="10.0.0.0">
+  <BasePolicyID>{BASE_POLICY_ID}</BasePolicyID>
+  <PolicyID>{POLICY_ID}</PolicyID>
+
+  <Rules>
+    <Rule>
+      <Option>Enabled:UnsignedSystemIntegrityPolicy</Option>
+    </Rule>
+  </Rules>
+
+  <EKUs>
+    <EKU ID="ID_EKU_KERNEL" FriendlyName="Windows Hardware Driver Verified" Value="1.3.6.1.4.1.311.10.3.5" />
+    <EKU ID="ID_EKU_CODESIGN" FriendlyName="Code Signing" Value="1.3.6.1.5.5.7.3.3" />
+  </EKUs>
+
+  <FileRules>
+    <FileRuleRef RuleID="ID_SIGNER_PRTRAK" />
+  </FileRules>
+
+  <Signers>
+    <Signer ID="ID_SIGNER_PRTRAK" Name="Pritrak DLP Internal CA">
+      <CertRoot Value="{SIGNER_ROOT_THUMBPRINT}" />
+    </Signer>
+  </Signers>
+
+  <SigningScenarios>
+    <!-- Kernel-mode signing scenario: driver load permission -->
+    <SigningScenario Value="131" ID="ID_SCENARIO_KERNEL" FriendlyName="Kernel Mode Signing">
+      <ProductSigners>
+        <FileRulesRef>
+          <FileRuleRef RuleID="ID_SIGNER_PRTRAK" />
+        </FileRulesRef>
+      </ProductSigners>
+    </SigningScenario>
+
+    <!-- User-mode signing scenario: agent binaries permission -->
+    <SigningScenario Value="12" ID="ID_SCENARIO_USER" FriendlyName="User Mode Signing">
+      <ProductSigners>
+        <FileRulesRef>
+          <FileRuleRef RuleID="ID_SIGNER_PRTRAK" />
+        </FileRulesRef>
+      </ProductSigners>
+    </SigningScenario>
+  </SigningScenarios>
+</SiPolicy>

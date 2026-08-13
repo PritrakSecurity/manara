@@ -1,0 +1,142 @@
+# Build artifacts
+build/
+dist/
+bin/
+obj/
+*.exe
+*.dll
+*.sys
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.obj
+*.o
+*.a
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake.user
+.vs/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+vendor/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+.eslintcache
+.parcel-cache
+
+# Frontend
+dist/
+build/
+*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates and keys (keep structure, ignore actual keys)
+*.key
+*.pem
+*.crt
+*.pfx
+!**/certs/*.example.*
+
+# Test coverage
+coverage/
+*.coverage
+*.lcov
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Driver signing
+*.cat
+*.inf
+*.cer
+
+# Installer
+*.msi
+*.wixobj
+*.wixpdb
+
+# Environment variables
+.env
+.env.local
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+
+# Development runtime files
+.runtime/
+backend/bin/
+frontend/dist/
+
+# Logs
+*.log
+
+# Temporary analysis files
+dspm_status.txt
+explained_v2.txt
+structure.txt
+prelaunch.txt
+
+# Build artifacts
+agent-build/
+build/
+dist/
+out/
+
+# Local environment files
+.env
+
+# Build Artifacts
+backend/static/artifacts/*.zip
+backend/static/artifacts/manifest.json
+agent/build/
+tools/agent/build/

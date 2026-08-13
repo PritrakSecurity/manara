@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dlp-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dlp_events
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/backend.Dockerfile
+    container_name: dlp-backend
+    environment:
+      DATABASE_URL: postgres://postgres:dev@postgres:5432/dlp_events?sslmode=disable
+      GRPC_LISTEN_ADDR: :50051
+      HTTP_LISTEN_ADDR: :8080
+      TLS_CERT_PATH: /certs/server.crt
+      TLS_KEY_PATH: /certs/server.key
+      LOG_LEVEL: INFO
+    ports:
+      - "50051:50051"
+      - "8080:8080"
+    volumes:
+      - ../backend:/app
+      - ./certs:/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: go run ./cmd/server/main.go
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../infra/docker/frontend.Dockerfile
+    container_name: dlp-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8080/api
+    command: npm run dev
+
+volumes:
+  postgres_data:

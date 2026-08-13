@@ -1,0 +1,40 @@
+{
+  "name": "enterprise-dlp-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:dev": "tsc && vite build --mode development",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,scss}\""
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.17.0",
+    "axios": "^1.6.5",
+    "lucide-react": "^0.562.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0",
+    "recharts": "^2.15.4",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.5.6",
+    "prettier": "^3.2.4",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
+  }
+}

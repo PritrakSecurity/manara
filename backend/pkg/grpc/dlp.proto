@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package dlp;
+
+option go_package = "enterprise-dlp-backend/pkg/grpc";
+
+// Policy Service
+service PolicyService {
+  rpc GetPolicy(GetPolicyRequest) returns (Policy);
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse);
+  rpc CreatePolicy(CreatePolicyRequest) returns (Policy);
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (Policy);
+  rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse);
+}
+
+message GetPolicyRequest {
+  string policy_id = 1;
+  string agent_id = 2;
+}
+
+message ListPoliciesRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message CreatePolicyRequest {
+  string name = 1;
+  string description = 2;
+  string rules = 3; // JSON string
+  int32 priority = 4;
+  bool enabled = 5;
+}
+
+message UpdatePolicyRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string rules = 4;
+  int32 priority = 5;
+  bool enabled = 6;
+}
+
+message DeletePolicyRequest {
+  string id = 1;
+}
+
+message DeletePolicyResponse {
+  bool success = 1;
+}
+
+message Policy {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string rules = 4; // JSON string
+  int32 priority = 5;
+  bool enabled = 6;
+  string created_at = 7;
+  string updated_at = 8;
+}
+
+message ListPoliciesResponse {
+  repeated PolicySummary policies = 1;
+}
+
+message PolicySummary {
+  string id = 1;
+  string name = 2;
+  string created_at = 3;
+}
+
+// Telemetry Service
+service TelemetryService {
+  rpc StreamEvents(stream Event) returns (StreamEventsResponse);
+}
+
+message Event {
+  string agent_id = 1;
+  string event_type = 2;
+  string operation = 3;
+  string source_path = 4;
+  string destination = 5;
+  string application = 6;
+  string user_id = 7;
+  string data = 8; // JSON string
+  string severity = 9;
+  string action_taken = 10;
+  string policy_id = 11;
+  string rule_id = 12;
+  int64 timestamp = 13;
+}
+
+message StreamEventsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Endpoint Service
+service EndpointService {
+  rpc RegisterEndpoint(RegisterEndpointRequest) returns (Endpoint);
+  rpc GetEndpoint(GetEndpointRequest) returns (Endpoint);
+  rpc ListEndpoints(ListEndpointsRequest) returns (ListEndpointsResponse);
+  rpc UpdateLastSeen(UpdateLastSeenRequest) returns (UpdateLastSeenResponse);
+}
+
+message RegisterEndpointRequest {
+  string agent_id = 1;
+  string hostname = 2;
+  string ip_address = 3;
+  string os_version = 4;
+  string agent_version = 5;
+}
+
+message GetEndpointRequest {
+  string agent_id = 1;
+}
+
+message ListEndpointsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message UpdateLastSeenRequest {
+  string agent_id = 1;
+}
+
+message UpdateLastSeenResponse {
+  bool success = 1;
+}
+
+message Endpoint {
+  string id = 1;
+  string agent_id = 2;
+  string hostname = 3;
+  string ip_address = 4;
+  string os_version = 5;
+  string agent_version = 6;
+  string last_seen = 7;
+  string created_at = 8;
+  string status = 9;
+}
+
+message ListEndpointsResponse {
+  repeated Endpoint endpoints = 1;
+}

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PRITRAK DLP Kernel Driver - Visual Studio Project File
+  
+  Build Requirements:
+  - Visual Studio 2022 with Windows Driver Kit (WDK) 10
+  - Windows SDK 10.0.22621.0 or later
+  
+  Build: msbuild PritrakDLP.vcxproj /p:Configuration=Release /p:Platform=x64
+-->
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A8F5D6E7-1234-5678-9ABC-DEF012345678}</ProjectGuid>
+    <TemplateGuid>{1bc93793-694f-48fe-9372-81e2b05556fd}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration>Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <RootNamespace>PritrakDLP</RootNamespace>
+    <DriverType>WDM</DriverType>
+    <DriverTargetPlatform>Universal</DriverTargetPlatform>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <TargetName>PritrakDLP</TargetName>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+
+  <!-- Debug Configuration -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;POOL_NX_OPTIN=1;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\common\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <WarningLevel>Level4</WarningLevel>
+      <WppEnabled>false</WppEnabled>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(DDK_LIB_PATH)\fltMgr.lib;$(DDK_LIB_PATH)\ntstrsafe.lib</AdditionalDependencies>
+    </Link>
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+
+  <!-- Release Configuration -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;POOL_NX_OPTIN=1;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\common\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <WarningLevel>Level4</WarningLevel>
+      <WppEnabled>false</WppEnabled>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(DDK_LIB_PATH)\fltMgr.lib;$(DDK_LIB_PATH)\ntstrsafe.lib</AdditionalDependencies>
+    </Link>
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+
+  <!-- Source Files -->
+  <ItemGroup>
+    <ClCompile Include="dlp_driver_core.c" />
+    <ClCompile Include="dlp_policy_cache.c" />
+    <ClCompile Include="dlp_process_tracker.c" />
+  </ItemGroup>
+
+  <!-- Header Files -->
+  <ItemGroup>
+    <ClInclude Include="dlp_kernel_types.h" />
+    <ClInclude Include="dlp_process_tracker.h" />
+    <ClInclude Include="..\common\shared\dlp_shared.h" />
+  </ItemGroup>
+
+  <!-- INF File -->
+  <ItemGroup>
+    <Inf Include="PritrakDLP.inf" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
+

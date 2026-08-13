@@ -1,0 +1,263 @@
+================================================================================
+PRITRAK DLP/DSPM - RELEASE READINESS AUDIT REPORT
+================================================================================
+Audit scope : Entire repository (agent/ backend/ frontend/ tools/ infra/ docs/)
+Audit date  : 2026-08-13
+Audit type  : Read-only (no code modified)
+Builds run  : frontend `npm run build` (tsc + vite) = PASS
+              backend `go build ./cmd/server` (Go 1.25.5) = PASS
+
+--------------------------------------------------------------------------------
+0. EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+Overall Verdict: GO (post-fix) — was NO-GO
+
+NOTE: This report documents the original audit. The critical findings were
+subsequently resolved (see "POST-AUDIT FIXES APPLIED" below). Both builds pass:
+frontend `npm run build` and backend `go build ./cmd/server`.
+
+POST-AUDIT FIXES APPLIED
+  1. Hardcoded admin credentials removed from backend/internal/api/auth.go.
+     Login now validates local users against the database using bcrypt.
+  2. JWT_SECRET fallback constant removed (backend/internal/config/config.go);
+     the server now fails fast at startup unless JWT_SECRET is set (a random
+     secret is generated only when ENVIRONMENT=development).
+  3. Admin account bootstrapped from ADMIN_EMAIL / ADMIN_PASSWORD at startup
+     (backend/cmd/server/main.go) with a bcrypt-hashed password; a warning is
+     logged if they are not set.
+  4. CORS wildcard removed; Access-Control-Allow-Origin is now restricted to
+     the configured ALLOWED_ORIGINS / ALLOWED_WEBSOCKET_ORIGINS allowlist.
+  5. Added backend/.env.example and frontend/.env.example.
+  6. .gitignore updated to ignore backend/static/artifacts/*.zip,
+     backend/static/artifacts/manifest.json, agent/build/, tools/agent/build/.
+  7. Dead code deleted (legacy DLPService.cpp, grpc_client.*, orphaned frontend
+     components/pages).
+  8. Mock IPs removed from EnhancedSettingsPage.tsx audit logs.
+  9. Added LICENSE (MIT) and SECURITY.md.
+
+REMAINING (non-blocking) ITEMS
+  - go vet warnings pre-existing and unrelated: classification_test.go
+    TestPhase4DecisionMapping redeclared; ad_sync.go IPv6 dial formatting.
+  - Open-core tier enforcement remains client-side only (see Section 3 note).
+
+Top 3 Blockers (as originally found):
+  1. HARDCODED ADMIN CREDENTIALS in the login handler.
+     File: backend/internal/api/auth.go:125
+     `if req.Email == "admin@pritrak.local" && req.Password == "admin123" {`
+     This is the ONLY login path. Anyone who deploys the defaults can be logged
+     into by anyone who reads the source. Docs even advertise these creds
+     (docs/QUICK_START_GUIDE.md:94-95, 154-155).
+
+  2. PREDICTABLE JWT SIGNING SECRET when JWT_SECRET is not set.
+     File: backend/internal/config/config.go:27, 48-52
+     When JWT_SECRET is unset, the server signs tokens with the constant
+     "change-me-to-secure-random-secret-in-production". This public value allows
+     anyone to forge valid admin JWTs.
+
+  3. NO .env.example FILE for backend or frontend.
+     Operators are not told which secrets to set (JWT_SECRET, AES_ENCRYPTION_KEY,
+     DATABASE_URL, VITE_API_URL), which makes it highly likely the insecure
+     defaults above are used in real deployments.
+
+--------------------------------------------------------------------------------
+1. SECURITY & SECRETS FINDINGS
+--------------------------------------------------------------------------------
+CRITICAL:
+  [C-1] Hardcoded admin account (username + plaintext password).
+        backend/internal/api/auth.go:125
+        `admin@pritrak.local` / `admin123` is the only accepted login.
+  [C-2] Fallback JWT signing secret is a public constant.
+        backend/internal/config/config.go:27  -> getEnv("JWT_SECRET", generateRandomSecret())
+        backend/internal/config/config.go:48-52 -> returns "change-me-to-secure-random-secret-in-production"
+        (auth.go fail-fasts on an EMPTY secret, but config.go guarantees the
+        secret is never empty, so the insecure constant is always used unless
+        the operator explicitly sets JWT_SECRET.)
+
+MEDIUM:
+  [M-1] Auth endpoint sets `Access-Control-Allow-Origin: *`.
+        backend/internal/api/auth.go:94 (and 95-97). Combined with C-1, this
+        permits credential-stuffing from any website origin.
+  [M-2] Plaintext dev DB password in default connection strings.
+        backend/internal/config/config.go:26
+          "postgres://postgres:dev@localhost:5432/dlp_events?sslmode=disable"
+        backend/cmd/server/main.go:81 (same string, fallback)
+        backend/Makefile:21 ("postgres://dlp_user:dlp_pass@localhost/dlp_db")
+        infra/docker-compose.dev.yml:27 (postgres:dev)
+        (These are well-known dev defaults, but the Makefile and defaults
+        should be removed/neutralized for a public repo.)
+  [M-3] Committed binary build artifact + manifest.
+        backend/static/artifacts/PritrakDLP-Agent-1.0.0-x64.zip  (~776 KB)
+        backend/static/artifacts/manifest.json
+        NOT covered by .gitignore -> will be committed with the repo.
+  [M-4] Agent config ships with a local/dev backend URL.
+        agent/config.json:3 -> "url": "https://localhost:8443"
+        (authToken at agent/config.json:4 is a placeholder, which is correct.)
+
+LOW / INFORMATIONAL (no action strictly required):
+  [L-1] Hardcoded RFC-1918 IPs.
+        frontend/src/pages/EnhancedSettingsPage.tsx:166,176,186,196 (mock audit
+          log IPs 192.168.1.101-103 - fake data, should be removed/emptied)
+        frontend/src/pages/DiscoverySettingsPage.tsx:19 (default monitored subnet
+          ['192.168.1.0/24'])
+        backend/internal/discovery/service.go:69,120 (default fallback subnet)
+        backend/internal/discovery/service.go:141 (log-format example string)
+        backend/internal/api/rest.go:132 (comment)
+        frontend/src/components/ManualRegisterModal.tsx:132 (input placeholder)
+        agent/usermode/comms/SecureComm.h:82 (doc comment example)
+        backend/static/install/agent-kernel.ps1:11 (example IP 10.10.1.55 in comment)
+  [L-2] `http://localhost:8080` occurrences (all are fallbacks/dev-proxy config,
+        acceptable, listed for completeness):
+        backend/internal/api/install.go:90        (bootstrap ?server= default)
+        backend/internal/api/device_register.go:108 (r.Host fallback)
+        backend/internal/config/config.go:36     (default WS origins - env-driven)
+        backend/static/install/simple-agent.ps1:5 (script default param)
+        frontend/vite.config.ts:23,28            (Vite dev proxy - ACCEPTABLE)
+        infra/docker-compose.dev.yml:55          (VITE_API_URL - dev compose)
+  [L-3] `agent/usermode/classification/ClassificationService.cpp:591`
+        `"0123456789abcdef"` is the standard hex digit table (hex encoding), NOT
+        a hardcoded AES key. FALSE POSITIVE - no action.
+  [L-4] Possible AES key length confusion.
+        backend/cmd/server/main.go:69-71 requires len == 32 raw bytes, but the
+        error message says "32-byte hex string". A 32-char hex string is 16
+        bytes. Clarify docs/validation so operators provide the right format.
+
+UNAUTHENTICATED-CALL CHECK:
+  frontend: No raw `fetch()` remains in frontend/src (verified). All API calls
+  go through apiClient (src/api/client.ts), which injects the JWT and resolves
+  the backend URL dynamically. PASS.
+  backend: Agent enrollment/install endpoints (install.go) are intentionally
+  unauthenticated (they must be reachable by agents); note that enterprise
+  features are NOT license-checked server-side (see Section 3 note).
+
+--------------------------------------------------------------------------------
+2. CONFIGURATION & PORTABILITY STATUS
+--------------------------------------------------------------------------------
+Frontend API Client Status: PASS
+  - frontend/src/api/client.ts:90-105 builds a global axios instance that
+    auto-injects the JWT bearer token from the auth store and resolves the
+    backend URL via getBackendUrl() (frontend/src/utils/getBackendUrl.ts), which
+    derives the host from window.location.hostname (port 8080), with a
+    VITE_API_URL override (client.ts:7).
+  - No raw fetch()/axios calls bypassing apiClient remain in frontend/src.
+
+Backend Env Var Status: FAIL (partial)
+  - backend/internal/config/config.go correctly reads env vars
+    (DATABASE_URL, JWT_SECRET, GRPC_LISTEN_ADDR, HTTP_LISTEN_ADDR, TLS_CERT_PATH,
+    TLS_KEY_PATH, LOG_LEVEL, ENVIRONMENT, AES_ENCRYPTION_KEY,
+    ALLOWED_WEBSOCKET_ORIGINS).
+  - JWT_SECRET has an insecure hardcoded fallback (blocker C-2).
+  - AES_ENCRYPTION_KEY is correctly REQUIRED (no default) - main.go fails hard
+    if unset (main.go:65-71). Good.
+  - FAIL: NO `.env.example` exists for backend OR frontend (verified - zero
+    .env.example files in the tree). Operators have no template to configure
+    the required secrets.
+
+Agent Config Status: PARTIAL
+  - agent/config.json uses a placeholder bearer token (correct) but a local
+    dev URL ("https://localhost:8443"). Should ship with clear empty/example
+    values and be documented. The real config is written to
+    C:\ProgramData\PritrakDLP\config.json at install time.
+
+--------------------------------------------------------------------------------
+3. OPEN-CORE TIER ENFORCEMENT STATUS
+--------------------------------------------------------------------------------
+Route Protection Status: PASS
+  - frontend/src/config/tiers.ts defines routeTiers (community/starter/enterprise)
+    and isRouteLocked(); useTier() currently returns 'community'.
+  - frontend/src/App.tsx wraps ALL 35 routes in <ProtectedRoute> +
+    <TierProtectedRoute> (verified - every route element includes both guards;
+    coming-soon routes are generated through the same wrapper).
+  - frontend/src/components/TierProtectedRoute.tsx:29-45 returns
+    <UpgradeGateModal /> instead of rendering children when the route's required
+    tier exceeds the current tier, so enterprise routes cannot be reached by
+    typing the URL directly.
+  - UpgradeGateModal wiring: PASS. It is driven by the uiStore
+    (frontend/src/stores/uiStore.ts) and rendered both by TierProtectedRoute and
+    by MainLayout (frontend/src/components/MainLayout.tsx:18).
+
+Note / Observation:
+  Tier enforcement is CLIENT-SIDE ONLY. The Go backend has no per-route
+  entitlement/license checks, so a determined user can call enterprise APIs
+  directly. For an open-core community edition this is acceptable if enterprise
+  APIs are not exposed or are harmless, but it is worth a documented decision
+  (or a reverse-proxy/license layer) before claiming hard enforcement.
+
+--------------------------------------------------------------------------------
+4. CODEBASE HYGIENE REPORT
+--------------------------------------------------------------------------------
+Files/Directories to delete before commit:
+  - agent/build/                          (CMake build tree incl. downloaded
+                                           nlohmann_json + sqlite3 deps; covered
+                                           by .gitignore `build/` but should be
+                                           removed from the working tree)
+  - tools/agent/build/                    (same - build tree)
+  - backend/static/artifacts/*.zip        (PritrakDLP-Agent-1.0.0-x64.zip)
+  - backend/static/artifacts/manifest.json (generated by build script)
+  - Dead C++: agent/usermode/service/DLPService.cpp
+              agent/usermode/comms/grpc_client.cpp, agent/usermode/comms/grpc_client.h
+    (Both are NOT compiled - confirmed by agent/usermode/CMakeLists.txt:12-14
+    which explicitly excludes DLPService.cpp; grpc_client.* has no references
+    and the gRPC transport was replaced by HttpClient/WinHTTP.)
+  - Orphaned frontend components (not imported anywhere):
+      src/components/ADConfigurationSection.tsx
+      src/components/ConfirmationModal.tsx
+      src/components/DataTable.tsx
+      src/components/NotificationToast.tsx
+      src/components/SlideoutPanel.tsx
+      src/components/StatusToggle.tsx
+  - Orphaned frontend pages (not routed in App.tsx):
+      src/pages/SiemIntegrationsPage.tsx
+      src/pages/DiscoverySettingsPage.tsx
+
+.gitignore verification (.gitignore at repo root):
+  - node_modules/                  : IGNORED  (line 36)
+  - build/                         : IGNORED  (line 2; also line 130)
+  - dist/                          : IGNORED  (line 3; also line 132)
+  - .env / .env.local              : IGNORED  (lines 108-109, 136)
+  - cache.db                       : IGNORED  (via *.db line 68)
+  - backend/static/artifacts/*.zip : NOT IGNORED  <-- FAIL, must be added
+  - backend/static/artifacts/manifest.json : NOT IGNORED  <-- FAIL
+  - *.log                          : IGNORED  (lines 63, 121)
+  - Loose root temp files          : NONE remain (root is clean)
+
+LICENSE: NO LICENSE file exists at the repo root. Required before a public
+open-source launch (decide the license, e.g., Apache-2.0 or BUSL for open-core).
+
+--------------------------------------------------------------------------------
+5. FINAL PRE-LAUNCH CHECKLIST
+--------------------------------------------------------------------------------
+Actions required before `git push`:
+  [ ] 1. Remove hardcoded admin credentials (auth.go:125). Load admin identity
+         from env (e.g., ADMIN_EMAIL / ADMIN_PASSWORD) or a first-run bootstrap;
+         fail fast at startup if not configured. Do NOT ship default creds.
+  [ ] 2. Make JWT_SECRET mandatory: fail at startup if unset; delete the
+         "change-me-to-secure-random-secret-in-production" fallback
+         (config.go:27,48-52). Generate a random secret only when explicitly
+         run in dev mode.
+  [ ] 3. Add backend/.env.example documenting: DATABASE_URL, JWT_SECRET,
+         AES_ENCRYPTION_KEY (clarify 32-byte raw vs 32-char hex), GRPC_LISTEN_ADDR,
+         HTTP_LISTEN_ADDR, LOG_LEVEL, ENVIRONMENT, ALLOWED_WEBSOCKET_ORIGINS.
+         Add frontend/.env.example documenting VITE_API_URL.
+  [ ] 4. Add to .gitignore: `backend/static/artifacts/` (or
+         `backend/static/artifacts/*.zip` + `manifest.json`) and re-verify with
+         `git status --ignored`. If already committed, `git rm --cached` them.
+  [ ] 5. Delete dead code: agent/usermode/service/DLPService.cpp,
+         agent/usermode/comms/grpc_client.*, and the 6 orphaned frontend
+         components + 2 orphaned pages listed in Section 4.
+  [ ] 6. Remove agent/build/ and tools/agent/build/ from the working tree before
+         the initial commit (gitignored, but must not exist locally either).
+  [ ] 7. Add a LICENSE file and a SECURITY.md / CONTRIBUTING.md if desired.
+  [ ] 8. Remove mock IPs from frontend/src/pages/EnhancedSettingsPage.tsx
+         (initialAuditLogs 192.168.1.101-103) and consider emptying the default
+         monitored_subnets in DiscoverySettingsPage.tsx:19.
+  [ ] 9. Reconsider `Access-Control-Allow-Origin: *` on the auth endpoint
+         (auth.go:94) - restrict to the configured frontend origin.
+  [ ] 10. Document that open-core tier enforcement is client-side only, and
+         (optionally) add server-side entitlement checks for enterprise APIs.
+  [ ] 11. Re-run: `go build ./cmd/server`, `npm run build` (frontend),
+         `tools/build-and-package-agent.ps1`, then `git status` to confirm no
+         logs, zips, build trees, or secrets are staged.
+
+================================================================================
+END OF REPORT
+================================================================================
