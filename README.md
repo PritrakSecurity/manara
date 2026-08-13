@@ -1,36 +1,34 @@
-<!-- TODO: add asset docs/images/pritrak.svg (project logo, ~160px) -->
-<!-- <p align="center"><img src="docs/images/pritrak.svg" width="160" alt="Manara DLP" /></p> -->
+<p align="center">
+  <img src="docs/images/pritrak.svg" alt="Manara DLP" width="170">
+</p>
 
 <h1 align="center">Manara DLP</h1>
 
-<p align="center"><strong>The Open-Core Data Loss Prevention &amp; DSPM Platform.</strong><br>
-<em>Visibility is free. Control is paid.</em></p>
-
 <p align="center">
-  <img src="https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square" alt="Go 1.24">
-  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square" alt="React 18">
-  <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square" alt="C++20">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License">
-  <img src="https://img.shields.io/badge/Open--Core-Community%20Free-brightgreen?style=flat-square" alt="Open-Core: Community free">
-  <img src="https://img.shields.io/badge/Agent-Windows-0078D6?style=flat-square" alt="Windows endpoint agent">
+  <strong>Open-source DLP and DSPM for modern security teams.</strong>
+  <br>
+  Discover, classify, and monitor sensitive data across Windows endpoints from one self-hosted console.
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#community-vs-enterprise-open-core">Community vs Enterprise</a> ·
-  <a href="#contributing--security">Contributing</a>
+  <em>Sensitive-data visibility without legacy DLP cost, complexity, or lock-in.</em>
 </p>
 
-Manara DLP is an **open-source, self-hosted data loss prevention (DLP) and Data Security Posture Management (DSPM) platform** — a Windows endpoint agent that classifies and hashes files, a Go backend that ingests inventory and policies, and a React admin console with real-time visibility. **Visibility is free and self-hosted; only advanced remediation and automation are paid.**
+<p align="center">
+  Go 1.24 · React 18 · C++20 · MIT License · Open-Core: Community free · Windows endpoint agent
+</p>
 
-<!-- TODO: add asset docs/images/dashboard.png (admin console screenshot) -->
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> · <a href="#-architecture">Architecture</a> · <a href="#-community-vs-enterprise-open-core">Community vs Enterprise</a> · <a href="#-contributing--security">Contributing</a>
+</p>
 
----
+> **Manara is an open-source, self-hosted Data Loss Prevention (DLP) and Data Security Posture Management platform for Windows environments. Its lightweight endpoint agent discovers and classifies sensitive files, monitors data activity, and streams security metadata to a Go backend and real-time React console—giving teams a clear view of where sensitive data lives and how it moves.**
+>
+> **Start with complete visibility. Add advanced automation as you scale.**
 
 ## 🧭 Why Manara DLP?
 
-Legacy DLP (Forcepoint, Proofpoint, Digital Guardian) costs $50–150 per endpoint per year, takes months of professional-services deployment, and is closed-source — you cannot audit what your own DLP is doing. Manara DLP is source-available, self-hosted, and enrolls an agent with a single PowerShell command.
+Legacy DLP (Forcepoint, Proofpoint, Digital Guardian) costs $50–150 per endpoint per year, takes months of professional-services deployment, and is closed-source — you cannot audit what your own DLP is doing. Manara DLP is open-source and self-hosted, with an open-core commercial model for advanced features, and enrolls an agent with a single PowerShell command.
 
 | The problem | Manara DLP's answer |
 |---|---|
@@ -45,12 +43,12 @@ Legacy DLP (Forcepoint, Proofpoint, Digital Guardian) costs $50–150 per endpoi
 - **Endpoint agent (Windows, C++20):** a user-mode Windows service that classifies local files, computes SHA-256 hashes, monitors file/USB/clipboard activity, and streams metadata to the backend. It runs **MONITOR_ONLY** by design — it observes and reports, it never blocks.
 - **Go backend:** JWT + bcrypt auth, policy & keyword engines, DSPM inventory, incident and approval workflows, real-time WebSocket event stream, and the agent-artifact manifest endpoint.
 - **React admin console:** a 7-pillar navigation (Command Center, Data Posture, Detection, Policy Studio, Compliance, Coverage, Administration) with tier-gated features and a live Event Explorer.
-- **One-command agent enrollment:** a PowerShell bootstrap that fetches a signed manifest, verifies the artifact SHA-256, and installs the agent as a Windows service.
+- **One-command agent enrollment:** a PowerShell bootstrap that fetches the artifact manifest and verifies the downloaded package against its SHA-256 checksum, then installs the agent as a Windows service.
 - **Data classification engine:** rule-based classification with configurable rules and dictionaries, plus keyword test/import/export tooling.
 
 ## ⚡ Quick Start
 
-Target: a running admin console **and** an enrolled endpoint in under five minutes.
+Enroll your first Windows endpoint with one PowerShell command.
 
 > **Prerequisites:** PostgreSQL 15+ (or Docker), Go 1.24+, Node 18+. On Windows, Visual Studio 2022 + CMake 3.20+ are needed to build the agent.
 
@@ -103,7 +101,7 @@ The endpoint enrolls, heartbeats, and appears in your dashboard within about a m
   ┌────────────────────────────┐
   │    React Admin Console     │   React 18 · Vite · TypeScript · Tailwind · Zustand
   └──────────────┬─────────────┘
-                 │  HTTPS · REST + WebSocket · JWT Bearer
+                 │  REST + WebSocket over HTTP · JWT Bearer
   ┌──────────────▼─────────────┐
   │        Go Backend          │   Go 1.24 · REST/WebSocket · gRPC · PostgreSQL
   │  auth · policies · DSPM ·  │
@@ -111,7 +109,7 @@ The endpoint enrolls, heartbeats, and appears in your dashboard within about a m
   │  agent artifact + manifest │
   └──────┬──────────────┬──────┘
          │              │
-         │  Postgres    │  HTTPS REST · enrollment, heartbeat, telemetry, bootstrap
+         │  Postgres    │  REST over HTTP · enrollment, heartbeat, telemetry, bootstrap
          │  (SQL)       │
   ┌──────▼──────────────▼──────┐
   │     C++ Endpoint Agent     │   C++20 · Windows service · WinHTTP
@@ -154,17 +152,17 @@ The community edition is free forever: **visibility and triage**. Enterprise add
 
 | Capability | Community | Starter | Enterprise |
 |---|---|---|---|
-| Command Center dashboards, incident triage, event explorer | ✅ | ✅ | ✅ |
-| Endpoint monitoring, sensor health, inventory & asset map | ✅ | ✅ | ✅ |
-| Policy builder, users/RBAC, framework mapping (GDPR/HIPAA/PCI) | ✅ | ✅ | ✅ |
-| DSPM classification labels, access/exposure, shadow data | | ✅ | ✅ |
-| SIEM / SOAR / ticketing exports, cloud & SaaS connectors | | ✅ | ✅ |
-| Classifiers & detection rules, exceptions & overrides | | ✅ | ✅ |
-| **UEBA** (user & entity risk), **EDM** dictionaries & fingerprinting | | | ✅ |
-| **Response playbooks**, automated remediation, case management | | | ✅ |
-| Data flow & lineage, policy simulation, change review/versioning | | | ✅ |
-| DSAR, retention/residency, attestation & sign-off | | | ✅ |
-| API keys & automation, platform audit log | | | ✅ |
+| Command Center dashboards, incident triage, event explorer | Included | Included | Included |
+| Endpoint monitoring, sensor health, inventory & asset map | Included | Included | Included |
+| Policy builder, users/RBAC, framework mapping (GDPR/HIPAA/PCI) | Included | Included | Included |
+| DSPM classification labels, access/exposure, shadow data | — | Included | Included |
+| SIEM / SOAR / ticketing exports, cloud & SaaS connectors | — | Planned | Planned |
+| Classifiers & detection rules, exceptions & overrides | — | Included | Included |
+| UEBA (user & entity risk), EDM dictionaries & fingerprinting | — | — | Planned |
+| Response playbooks, automated remediation, case management | — | — | Planned |
+| Data flow & lineage, policy simulation, change review/versioning | — | — | Planned |
+| DSAR, retention/residency, attestation & sign-off | — | — | Planned |
+| API keys & automation, platform audit log | — | — | Planned |
 
 > **Honest note:** tier gating is currently enforced **client-side** (routes render an upgrade gate instead of the page). Server-side entitlement/license enforcement is on the [roadmap](#roadmap), as is enforcement of the community 15-endpoint cap.
 
@@ -220,6 +218,8 @@ The agent uses **CMake + FetchContent** for `nlohmann/json` and SQLite — no ma
 ├── installer/      # Windows installer + WDAC policy / signing material
 └── tools/          # build-and-package-agent.ps1, contract validators
 ```
+
+> **Note:** Pritrak Security is the company developing Manara DLP. You may see `PritrakDLP` used in some internal code paths, service names, and build artifacts (e.g., `PritrakDLP-Agent-1.0.0-x64.zip`). These will be unified to Manara in a future release.
 
 ## 🗺 Roadmap
 
@@ -279,4 +279,4 @@ MIT — see [LICENSE](LICENSE). Manara DLP © 2026.
 
 ---
 
-<p align="center">Built with ❤️ by the Manara DLP team. If Manara DLP is useful to you, a ⭐ genuinely helps the project get discovered.</p>
+<p align="center">Built with ❤️ by the Pritrak team. If Manara DLP is useful to you, a ⭐ genuinely helps the project get discovered.</p>
