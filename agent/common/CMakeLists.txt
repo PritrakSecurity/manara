@@ -5,6 +5,8 @@ add_library(dlp_common STATIC
     config/config_manager.h
     utils/logging.cpp
     utils/logging.h
+    utils/NetworkUtils.cpp
+    utils/NetworkUtils.h
     shared/dlp_shared.h
 )
 
@@ -34,4 +36,7 @@ if(WIN32)
         WIN32_LEAN_AND_MEAN
         _WIN32_WINNT=0x0600
     )
+
+    # NetworkUtils uses GetAdaptersAddresses / socket APIs.
+    target_link_libraries(dlp_common PUBLIC iphlpapi ws2_32)
 endif()

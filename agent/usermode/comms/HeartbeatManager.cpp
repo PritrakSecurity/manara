@@ -1,6 +1,7 @@
 #include "HeartbeatManager.h"
 #include "HttpClient.h"
 #include "../../common/utils/logging.h"
+#include "../../common/utils/NetworkUtils.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -91,25 +92,9 @@ bool HeartbeatManager::Initialize(const std::string& backendUrl,
         osVersion_ = "Windows";
     }
 
-    // Get first IP address
-    ULONG bufLen = 15000;
-    PIP_ADAPTER_ADDRESSES addresses = (IP_ADAPTER_ADDRESSES*)malloc(bufLen);
-    if (GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, nullptr, addresses, &bufLen) == NO_ERROR) {
-        for (PIP_ADAPTER_ADDRESSES adapter = addresses; adapter; adapter = adapter->Next) {
-            if (adapter->OperStatus == IfOperStatusUp && adapter->FirstUnicastAddress) {
-                sockaddr_in* sa = (sockaddr_in*)adapter->FirstUnicastAddress->Address.lpSockaddr;
-                char ipStr[16];
-                if (inet_ntop(AF_INET, &(sa->sin_addr), ipStr, sizeof(ipStr))) {
-                    std::string ip = ipStr;
-                    if (ip != "127.0.0.1") {
-                        ipAddress_ = ip;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    free(addresses);
+    // Get the primary LAN IP address (prefers physical Ethernet/Wi-Fi NICs
+    // over virtual adapters such as Docker/Hyper-V).
+    ipAddress_ = NetworkUtils::GetPrimaryIPv4Address();
 #else
     // Linux implementation
     char hostbuf[256];

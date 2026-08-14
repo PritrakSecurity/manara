@@ -2,6 +2,7 @@
 #include "HttpClient.h"
 #include "../core/EventTypes.h"
 #include "../../common/utils/logging.h"
+#include "../../common/utils/NetworkUtils.h"
 #include "../../common/config/Config.h"
 
 #include <sstream>
@@ -224,7 +225,7 @@ bool SecureComm::RegisterDevice(const std::string& serverUrl,
 
     nlohmann::json payload;
     payload["hostname"] = hostname;
-    payload["ipAddress"] = "0.0.0.0";
+    payload["ipAddress"] = NetworkUtils::GetPrimaryIPv4Address();
     payload["osVersion"] = osVersion;
     payload["agentVersion"] = agentVersion;
     payload["registrationMethod"] = "manual";
