@@ -40,6 +40,12 @@ struct ClassificationResult {
     std::wstring matchedPattern;
     std::vector<std::wstring> matchedKeywords; // Keywords of the matched rule
     bool isProtected;               // Should this file be protected?
+
+    // DSPM contextual risk metadata (Phase 2 DCI)
+    std::string exposureLevel;      // PUBLIC, INTERNAL, RESTRICTED
+    int riskScore;                  // 0-100 contextual risk score
+    std::string contentSnippet;     // Masked, truncated content snippet (never raw PII)
+    std::string ownerSid;           // File owner SID (S-1-...-...)
 };
 
 /**
@@ -211,6 +217,16 @@ private:
     bool MatchPath(const std::vector<std::wstring>& pathPatterns, const std::wstring& filePath);
     std::string ReadFileContent(const std::wstring& filePath, size_t maxBytes = 1048576);
     bool PushPolicyToKernel(const ClassificationResult& result);
+
+    // Phase 2 DSPM Deep Content Inspection (DCI)
+    std::string ExtractTextFromFile(const std::wstring& filePath);
+    std::vector<std::string> ScanTextForPII(const std::string& text);
+    std::string CalculateExposure(const std::wstring& filePath);
+    bool IsValidLuhn(const std::string& digits) const;
+    std::string MaskSensitiveData(const std::string& text) const;
+    std::string GetFileOwnerSid(const std::wstring& filePath) const;
+    int CalculateRiskScore(bool hasPII, const std::string& exposure) const;
+    void RunDeepContentInspection(const std::wstring& filePath, ClassificationResult& result);
 
     // DSPM discovery reporting
     std::string ComputeSha256(const std::wstring& filePath) const;

@@ -534,6 +534,32 @@ func (ce *ClassificationEngine) phase4Decision(score float64) EngineClassificati
 	}
 }
 
+// CalculateRiskScore computes a 0-100 contextual risk score for an asset.
+//
+// Base score comes from the classification level, with adjustments for PII
+// presence and a PUBLIC exposure level. The result is capped at 100.
+func CalculateRiskScore(classification string, exposure string, hasPII bool) int {
+	base := map[string]int{
+		"PUBLIC":       0,
+		"INTERNAL":     30,
+		"CONFIDENTIAL": 60,
+		"RESTRICTED":   80,
+		"SECRET":       100,
+	}
+
+	score := base[strings.ToUpper(classification)]
+	if hasPII {
+		score += 10
+	}
+	if strings.ToUpper(exposure) == "PUBLIC" {
+		score += 10
+	}
+	if score > 100 {
+		score = 100
+	}
+	return score
+}
+
 // Helper methods
 
 func (ce *ClassificationEngine) readFileContent(filePath string, maxSize int64) string {

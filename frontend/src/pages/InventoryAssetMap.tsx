@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Database, FingerprintPattern, Lock, Ghost, Search, RefreshCw, FolderOpen, Inbox } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, Database, Globe, Search, RefreshCw, FolderOpen, Inbox, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 interface InventoryAsset {
@@ -12,6 +12,21 @@ interface InventoryAsset {
   last_accessed_at: string;
   first_scanned_at: string;
   created_at: string;
+  exposure_level: string;
+  risk_score: number;
+  content_snippet: string;
+}
+
+interface RiskDistribution {
+  critical?: number;
+  high?: number;
+  medium?: number;
+  low?: number;
+}
+
+interface DSPMStats {
+  TOTAL?: number;
+  risk_distribution?: RiskDistribution;
 }
 
 const classificationOptions = [
@@ -56,10 +71,36 @@ function classificationColor(c: string): string {
   }
 }
 
+function riskBucket(score: number): { label: string; text: string; bar: string; badge: string } {
+  if (score >= 76) {
+    return { label: 'Critical', text: 'text-red-600', bar: 'bg-red-500', badge: 'bg-red-100 text-red-700' };
+  }
+  if (score >= 51) {
+    return { label: 'High', text: 'text-orange-600', bar: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' };
+  }
+  if (score >= 26) {
+    return { label: 'Medium', text: 'text-yellow-600', bar: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-700' };
+  }
+  return { label: 'Low', text: 'text-green-600', bar: 'bg-green-500', badge: 'bg-green-100 text-green-700' };
+}
+
+function exposureBadge(level: string): string {
+  switch (level) {
+    case 'PUBLIC':
+      return 'bg-red-100 text-red-700 border-red-200';
+    case 'INTERNAL':
+      return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'RESTRICTED':
+      return 'bg-gray-100 text-gray-600 border-gray-200';
+    default:
+      return 'bg-gray-50 text-gray-500 border-gray-200';
+  }
+}
+
 export default function InventoryAssetMap() {
   const [assets, setAssets] = useState<InventoryAsset[]>([]);
-  const [stats, setStats] = useState<Record<string, number>>({});
-  const [unmanaged, setUnmanaged] = useState(0);
+  const [stats, setStats] = useState<DSPMStats>({});
+  const [publicCount, setPublicCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -80,7 +121,7 @@ export default function InventoryAssetMap() {
       ]);
       setStats(statsRes.data || {});
       const list: InventoryAsset[] = unmanagedRes.data?.data || [];
-      setUnmanaged(list.filter((a) => !a.owner_user_id || a.owner_user_id === 'unknown').length);
+      setPublicCount(list.filter((a) => (a.exposure_level || '').toUpperCase() === 'PUBLIC').length);
     } catch {
       // stats/unmanaged are best-effort; the table drives the page
     }
@@ -110,15 +151,48 @@ export default function InventoryAssetMap() {
     loadAssets();
   }, [loadAssets]);
 
+  const riskDist = stats.risk_distribution || {};
+  const critical = riskDist.critical || 0;
+  const high = riskDist.high || 0;
   const total = stats.TOTAL || 0;
-  const pii = stats.PII || 0;
-  const restricted = (stats.RESTRICTED || 0) + (stats.TOP_SECRET || 0);
 
   const statCards = [
-    { label: 'Total Data Assets', value: total, icon: Database, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'PII Found', value: pii, icon: FingerprintPattern, color: 'text-yellow-600', bg: 'bg-yellow-100' },
-    { label: 'Restricted Files', value: restricted, icon: Lock, color: 'text-red-600', bg: 'bg-red-100' },
-    { label: 'Unmanaged Data', value: unmanaged, icon: Ghost, color: 'text-gray-600', bg: 'bg-gray-100' },
+    {
+      label: 'Critical Risk Assets',
+      value: critical,
+      icon: AlertTriangle,
+      color: 'text-red-600',
+      bg: 'bg-red-100',
+      ring: 'ring-red-200',
+      subtitle: 'Score 76–100',
+    },
+    {
+      label: 'High Risk Assets',
+      value: high,
+      icon: ShieldAlert,
+      color: 'text-orange-600',
+      bg: 'bg-orange-100',
+      ring: 'ring-orange-200',
+      subtitle: 'Score 51–75',
+    },
+    {
+      label: 'Total Sensitive Files',
+      value: total,
+      icon: Database,
+      color: 'text-blue-600',
+      bg: 'bg-blue-100',
+      ring: 'ring-blue-200',
+      subtitle: 'All classifications',
+    },
+    {
+      label: 'Publicly Exposed Files',
+      value: publicCount,
+      icon: Globe,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-100',
+      ring: 'ring-yellow-200',
+      subtitle: 'Exposure: PUBLIC',
+    },
   ];
 
   return (
@@ -146,12 +220,19 @@ export default function InventoryAssetMap() {
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {statCards.map((card) => (
-          <div key={card.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className={`w-11 h-11 rounded-lg ${card.bg} flex items-center justify-center mb-3`}>
-              <card.icon className={`h-5 w-5 ${card.color}`} />
+          <div
+            key={card.label}
+            className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 relative overflow-hidden"
+          >
+            <div className={`absolute top-0 left-0 h-1 w-full ${card.bg}`} />
+            <div className="flex items-start justify-between">
+              <div className={`w-11 h-11 rounded-lg ${card.bg} ring-2 ${card.ring} flex items-center justify-center`}>
+                <card.icon className={`h-5 w-5 ${card.color}`} />
+              </div>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{card.value.toLocaleString()}</div>
-            <div className="text-sm text-gray-500 mt-1">{card.label}</div>
+            <div className="text-3xl font-bold text-gray-900 mt-4">{card.value.toLocaleString()}</div>
+            <div className="text-sm font-medium text-gray-600 mt-1">{card.label}</div>
+            {card.subtitle && <div className="text-xs text-gray-400 mt-0.5">{card.subtitle}</div>}
           </div>
         ))}
       </div>
@@ -200,30 +281,68 @@ export default function InventoryAssetMap() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">File Path</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Classification</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Risk Score</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Exposure</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Snippet</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">File Size</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Last Scanned</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {assets.map((asset) => (
-                  <tr key={asset.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <FolderOpen size={16} className="text-gray-400 flex-shrink-0" />
-                        <span className="text-sm text-gray-900 break-all">{asset.file_path}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${classificationColor(asset.classification)}`}>
-                        {asset.classification}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">{formatBytes(asset.file_size_bytes)}</td>
-                    <td className="px-6 py-3 text-sm text-gray-600">
-                      {new Date(asset.last_accessed_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {assets.map((asset) => {
+                  const risk = riskBucket(asset.risk_score || 0);
+                  const exposure = (asset.exposure_level || 'UNKNOWN').toUpperCase();
+                  return (
+                    <tr key={asset.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <FolderOpen size={16} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-900 break-all">{asset.file_path}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${classificationColor(asset.classification)}`}>
+                          {asset.classification}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold ${risk.badge}`}>
+                            <ShieldCheck size={12} />
+                            {asset.risk_score ?? 0}
+                          </span>
+                          <div className="hidden xl:block w-20 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${risk.bar}`}
+                              style={{ width: `${Math.min(100, Math.max(0, asset.risk_score ?? 0))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium border ${exposureBadge(exposure)}`}>
+                          {exposure}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3">
+                        {asset.content_snippet ? (
+                          <span
+                            title={asset.content_snippet}
+                            className="block max-w-[280px] truncate font-mono text-xs text-gray-600 cursor-help"
+                          >
+                            {asset.content_snippet}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-600">{formatBytes(asset.file_size_bytes)}</td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {new Date(asset.last_accessed_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

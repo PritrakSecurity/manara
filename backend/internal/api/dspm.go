@@ -6,10 +6,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	ssnMaskRegex  = regexp.MustCompile(`\d{3}-\d{2}-(\d{4})`)
+	ccMaskRegex   = regexp.MustCompile(`\b(?:\d{4}[-\s]?){3}(\d{4})\b`)
+	phoneMaskRegex = regexp.MustCompile(`(?:\+?\d[\d\s-]{7,})(\d{4})`)
 )
 
 // DSPMHandler provides the data-discovery inventory APIs backed by the
@@ -22,7 +30,7 @@ func NewDSPMHandler(db *sql.DB) *DSPMHandler {
 	return &DSPMHandler{db: db}
 }
 
-// inventoryAsset mirrors the inventory_assets schema (migration 014).
+// inventoryAsset mirrors the inventory_assets schema (migration 015).
 type inventoryAsset struct {
 	ID             string    `json:"id"`
 	FilePath       string    `json:"file_path"`
@@ -33,6 +41,10 @@ type inventoryAsset struct {
 	LastAccessedAt time.Time `json:"last_accessed_at"`
 	FirstScannedAt time.Time `json:"first_scanned_at"`
 	CreatedAt      time.Time `json:"created_at"`
+	ExposureLevel  string    `json:"exposure_level"`
+	RiskScore      int       `json:"risk_score"`
+	ContentSnippet string    `json:"content_snippet"`
+	OwnerSID       string    `json:"owner_sid"`
 }
 
 // HandleInventoryUpsert handles POST /api/v1/dspm/inventory
@@ -48,6 +60,10 @@ func (h *DSPMHandler) HandleInventoryUpsert(w http.ResponseWriter, r *http.Reque
 		Classification  string   `json:"classification"`
 		MatchedKeywords []string `json:"matched_keywords"`
 		Hostname        string   `json:"hostname"`
+		ExposureLevel   string   `json:"exposure_level"`
+		RiskScore       int      `json:"risk_score"`
+		ContentSnippet  string   `json:"content_snippet"`
+		OwnerSID        string   `json:"owner_sid"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -63,6 +79,20 @@ func (h *DSPMHandler) HandleInventoryUpsert(w http.ResponseWriter, r *http.Reque
 	if req.FileSize < 0 {
 		req.FileSize = 0
 	}
+	if req.ExposureLevel == "" {
+		req.ExposureLevel = "INTERNAL"
+	}
+	req.ExposureLevel = strings.ToUpper(req.ExposureLevel)
+	switch req.ExposureLevel {
+	case "PUBLIC", "INTERNAL", "RESTRICTED":
+	default:
+		http.Error(w, "invalid exposure_level", http.StatusBadRequest)
+		return
+	}
+	if req.RiskScore < 0 || req.RiskScore > 100 {
+		http.Error(w, "risk_score must be between 0 and 100", http.StatusBadRequest)
+		return
+	}
 	owner := req.Hostname
 	if owner == "" {
 		owner = "unknown"
@@ -75,21 +105,26 @@ func (h *DSPMHandler) HandleInventoryUpsert(w http.ResponseWriter, r *http.Reque
 		req.FileHash,
 	).Scan(&existing)
 
+	maskedSnippet := MaskSensitiveData(req.ContentSnippet)
+
 	if err == sql.ErrNoRows {
 		_, err = h.db.Exec(`
 			INSERT INTO inventory_assets
 				(id, file_path, file_hash_sha256, owner_user_id, classification,
-				 file_size_bytes, last_accessed_at, first_scanned_at, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now())
+				 file_size_bytes, last_accessed_at, first_scanned_at, created_at,
+				 exposure_level, risk_score, content_snippet, owner_sid)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), $8, $9, $10, $11)
 		`, uuid.New().String(), req.FilePath, req.FileHash, owner, req.Classification,
-			req.FileSize, now)
+			req.FileSize, now, req.ExposureLevel, req.RiskScore, maskedSnippet, req.OwnerSID)
 	} else if err == nil {
 		_, err = h.db.Exec(`
 			UPDATE inventory_assets
 			SET file_path = $1, owner_user_id = $2, classification = $3,
-			    file_size_bytes = $4, last_accessed_at = $5
-			WHERE file_hash_sha256 = $6
-		`, req.FilePath, owner, req.Classification, req.FileSize, now, req.FileHash)
+			    file_size_bytes = $4, last_accessed_at = $5,
+			    exposure_level = $6, risk_score = $7, content_snippet = $8, owner_sid = $9
+			WHERE file_hash_sha256 = $10
+		`, req.FilePath, owner, req.Classification, req.FileSize, now,
+			req.ExposureLevel, req.RiskScore, maskedSnippet, req.OwnerSID, req.FileHash)
 	}
 
 	if err != nil {
@@ -145,9 +180,10 @@ func (h *DSPMHandler) HandleInventoryList(w http.ResponseWriter, r *http.Request
 
 	query := `
 		SELECT id, file_path, file_hash_sha256, owner_user_id, classification,
-		       file_size_bytes, last_accessed_at, first_scanned_at, created_at
+		       file_size_bytes, last_accessed_at, first_scanned_at, created_at,
+		       exposure_level, risk_score, content_snippet, owner_sid
 		FROM inventory_assets` + where +
-		fmt.Sprintf(" ORDER BY last_accessed_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
+		fmt.Sprintf(" ORDER BY risk_score DESC, last_accessed_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
 	args = append(args, limit, offset)
 
 	rows, err := h.db.Query(query, args...)
@@ -162,7 +198,8 @@ func (h *DSPMHandler) HandleInventoryList(w http.ResponseWriter, r *http.Request
 	for rows.Next() {
 		var a inventoryAsset
 		if err := rows.Scan(&a.ID, &a.FilePath, &a.FileHashSha256, &a.OwnerUserID,
-			&a.Classification, &a.FileSizeBytes, &a.LastAccessedAt, &a.FirstScannedAt, &a.CreatedAt); err != nil {
+			&a.Classification, &a.FileSizeBytes, &a.LastAccessedAt, &a.FirstScannedAt, &a.CreatedAt,
+			&a.ExposureLevel, &a.RiskScore, &a.ContentSnippet, &a.OwnerSID); err != nil {
 			continue
 		}
 		assets = append(assets, a)
@@ -179,7 +216,8 @@ func (h *DSPMHandler) HandleInventoryList(w http.ResponseWriter, r *http.Request
 
 // HandleInventoryStats handles GET /api/v1/dspm/stats
 //
-// Returns asset counts grouped by classification plus a TOTAL count.
+// Returns asset counts grouped by classification, a risk distribution broken
+// into critical/high/medium/low buckets, and a TOTAL count.
 func (h *DSPMHandler) HandleInventoryStats(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.Query(`SELECT classification, COUNT(*) FROM inventory_assets GROUP BY classification`)
 	if err != nil {
@@ -200,8 +238,54 @@ func (h *DSPMHandler) HandleInventoryStats(w http.ResponseWriter, r *http.Reques
 		stats[c] = n
 		total += n
 	}
+
+	riskDist := map[string]int{
+		"critical": 0,
+		"high":     0,
+		"medium":   0,
+		"low":      0,
+	}
+	riskRows, err := h.db.Query(`
+		SELECT
+			SUM(CASE WHEN risk_score BETWEEN 76 AND 100 THEN 1 ELSE 0 END) AS critical,
+			SUM(CASE WHEN risk_score BETWEEN 51 AND 75 THEN 1 ELSE 0 END) AS high,
+			SUM(CASE WHEN risk_score BETWEEN 26 AND 50 THEN 1 ELSE 0 END) AS medium,
+			SUM(CASE WHEN risk_score BETWEEN 0 AND 25 THEN 1 ELSE 0 END) AS low
+		FROM inventory_assets`)
+	if err != nil {
+		log.Printf("[DSPM] Failed to query risk distribution: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	defer riskRows.Close()
+
+	if riskRows.Next() {
+		var critical, high, medium, low sql.NullInt64
+		if err := riskRows.Scan(&critical, &high, &medium, &low); err == nil {
+			riskDist["critical"] = int(critical.Int64)
+			riskDist["high"] = int(high.Int64)
+			riskDist["medium"] = int(medium.Int64)
+			riskDist["low"] = int(low.Int64)
+		}
+	}
+
+	stats["risk_distribution"] = riskDist
 	stats["TOTAL"] = total
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+// MaskSensitiveData masks PII inside a snippet before it is persisted.
+//
+// SSNs (123-45-6789) become ***-**-6789, credit card numbers keep only the
+// last four digits, and phone numbers keep only the last four digits.
+func MaskSensitiveData(snippet string) string {
+	if snippet == "" {
+		return snippet
+	}
+	snippet = ssnMaskRegex.ReplaceAllString(snippet, "***-**-$1")
+	snippet = ccMaskRegex.ReplaceAllString(snippet, "****-****-****-$1")
+	snippet = phoneMaskRegex.ReplaceAllString(snippet, "***-***-$1")
+	return snippet
 }
