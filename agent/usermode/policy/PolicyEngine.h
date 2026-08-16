@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
@@ -79,13 +80,13 @@ public:
      * Check if policy is loaded
      * @return true if policy loaded, false otherwise
      */
-    bool IsPolicyLoaded() const { return !rules_.empty(); }
+    bool IsPolicyLoaded() const;
 
     /**
      * Get number of loaded rules
      * @return Number of rules
      */
-    size_t GetRuleCount() const { return rules_.size(); }
+    size_t GetRuleCount() const;
 
     /**
      * Clear all rules (defaults to BLOCK for all operations)
@@ -168,4 +169,8 @@ private:
 
     // Compiled regex patterns cache
     std::unordered_map<std::string, std::string> regexCache_;
+
+    // Guards rules_ and regexCache_ against concurrent access from the policy
+    // refresh thread and the event-processing thread.
+    mutable std::mutex mutex_;
 };

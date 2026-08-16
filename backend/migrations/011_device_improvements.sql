@@ -66,7 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_occurred_at ON audit_logs(occurred_at 
 
 -- Insert initial log entries for existing devices
 INSERT INTO device_logs (device_id, log_level, category, message, timestamp)
-SELECT id, 'INFO', 'SYSTEM', 'Device registered in system', registered_at
+SELECT id, 'INFO', 'SYSTEM', 'Device registered in system', created_at
 FROM devices
 WHERE id NOT IN (SELECT DISTINCT device_id FROM device_logs WHERE category = 'SYSTEM');
 

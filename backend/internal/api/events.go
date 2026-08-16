@@ -434,12 +434,14 @@ func (h *EventsHandler) doesRuleMatch(conditionsJSON string, event *FileEvent) b
 
 // Helper: create incident record
 func (h *EventsHandler) createIncident(deviceID, eventID, ruleName, severity string, event *FileEvent, action string) string {
-    id := uuid.New().String()
-    insert := `INSERT INTO incidents (id, device_id, event_id, incident_type, severity, description, status, rule_name, rule_triggered_reason, file_involved, user_involved, action_taken, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
+    // incidents.id is BIGSERIAL: never insert a UUID into it. Let the database
+    // assign the id and return it so incidents are actually persisted.
+    insert := `INSERT INTO incidents (device_id, event_id, incident_type, severity, description, status, rule_name, rule_triggered_reason, file_involved, user_involved, action_taken, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id::text`
     desc := "DLP rule triggered: " + ruleName
     reason := "File operation matches DLP rule conditions"
     actionTaken := action
-    _, err := h.db.Exec(insert, id, deviceID, eventID, "DLP_VIOLATION", severity, desc, "OPEN", ruleName, reason, event.FilePath, event.Username, actionTaken, time.Now(), time.Now())
+    var id string
+    err := h.db.QueryRow(insert, deviceID, eventID, "DLP_VIOLATION", severity, desc, "OPEN", ruleName, reason, event.FilePath, event.Username, actionTaken, time.Now(), time.Now()).Scan(&id)
     if err != nil {
         log.Printf("[ERROR] Failed to create incident: %v", err)
         return ""

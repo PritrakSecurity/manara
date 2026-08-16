@@ -35,7 +35,11 @@ bool PolicyEngine::LoadRules(const std::string& policyJson) {
 }
 
 bool PolicyEngine::LoadRules(const nlohmann::json& policy) {
-    ClearRules();
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Clear existing rules (defaults to BLOCK)
+    rules_.clear();
+    regexCache_.clear();
 
     try {
         // Validate policy structure
@@ -93,6 +97,8 @@ bool PolicyEngine::LoadRules(const nlohmann::json& policy) {
 }
 
 PolicyAction PolicyEngine::EvaluateEvent(const PolicyEvent& PolicyEvent) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     // If no rules loaded, default to BLOCK (fail-closed)
     if (rules_.empty()) {
         LOG_WARNING("No policy rules loaded, defaulting to BLOCK (fail-closed)");
@@ -425,6 +431,17 @@ PolicyAction PolicyEngine::ParseAction(const std::string& actionStr) {
 }
 
 void PolicyEngine::ClearRules() {
+    std::lock_guard<std::mutex> lock(mutex_);
     rules_.clear();
     regexCache_.clear();
+}
+
+bool PolicyEngine::IsPolicyLoaded() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return !rules_.empty();
+}
+
+size_t PolicyEngine::GetRuleCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return rules_.size();
 }

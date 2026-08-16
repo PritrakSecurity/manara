@@ -1,0 +1,144 @@
+# Manara DLP - Code Audit Report
+
+## 0. Executive Summary
+- Total Issues Found: 50
+- Critical: 8
+- High: 12
+- Medium: 20
+- Low: 10
+
+This audit covers `backend/` (Go), `agent/` (C++20), `frontend/` (React/TypeScript), database migrations, and infra configuration. The highest-severity problems are: (1) an authorization bypass where a public unauthenticated endpoint mints JWTs that unlock every protected admin route; (2) severe database schema drift between the migrations and the Go code that breaks login, incidents, AD sync, and device registration on fresh installs; and (3) multiple data races in the C++ agent (unlocked `rules_` vector, unsynchronized shared SQLite connection). A notable functional bug — the `incidents.id` column is `BIGSERIAL` but `events.go` inserts a UUID string into it — silently discards every DLP-rule-triggered incident.
+
+---
+
+## 1. CRITICAL (Will cause crashes, security breaches, or data loss)
+
+1. **[backend/internal/api/devices.go:495-502] + [backend/internal/api/rest.go:108-141] — Authentication bypass: public device registration mints valid admin-equivalent JWTs.** `/api/devices/register` is in the public (unauthenticated) path list (`rest.go:79`) and, on success, issues a real signed JWT via `generateToken(device.ID, ..., "device")` (24h expiry). `AuthMiddleware` validates the signature but **never checks the `claims.Role`**, and no handler ever reads the claims from context. Any unauthenticated attacker can `POST /api/devices/register` with an arbitrary hostname, receive a valid bearer token, and use it against every protected endpoint (users, roles, policies, DSPM inventory, events). This is a full authorization bypass.
+
+2. **[backend/cmd/server/main.go:157-161] + [pkg/auth/interceptor.go] — gRPC server runs with no TLS and the auth interceptor is never registered.** When the TLS config fails to load, `grpc.NewServer()` is used with no credentials (line 161), and the mTLS auth interceptor exists in `pkg/auth` but is never wired into `RegisterServices`. The gRPC layer effectively has no authentication or encryption.
+
+3. **[backend/internal/api/rest.go:616] — Public telemetry endpoint logs full raw file content.** `/api/telemetry` is unauthenticated (rest.go:81) and `log.Printf("[TELEMETRY-RAW] Received %d bytes: %s", ...)` writes the entire request body — which is file data reported by agents — into the server logs. Sensitive file content is persisted in plaintext logs.
+
+4. **[backend/internal/api/events.go:436-446] — `incidents.id` type mismatch: UUID inserted into BIGSERIAL column.** Migration 005:88 and 013:2 define `incidents.id` as `BIGSERIAL`, but `createIncident` sets `id := uuid.New().String()` and inserts it. Every DLP-rule-triggered incident insert fails with `invalid input syntax for type bigint`, and the error is logged and swallowed (line 443-446). Incident data is silently lost.
+
+5. **[backend/migrations/011_device_improvements.sql:68-71] — Migration 011 is internally broken and aborts the whole migration chain on fresh installs.** It runs `INSERT INTO device_logs ... SELECT id, ..., registered_at FROM devices`, but `devices.registered_at` is created by no earlier migration → SQLSTATE `42703 undefined_column`, which the runner does not whitelist. On a fresh database the chain aborts at 011, so 012–015 (enhanced users, DSPM inventory) never apply. This is the root cause of the earlier schema-drift incidents.
+
+6. **[backend/migrations/001:105-117 / 006:4-15 / 012] + [backend/internal/api/auth.go:141-146] — `users` table schema drift breaks login.** Migration 001 creates `users` with `role`/`enabled`; migration 006's `CREATE TABLE IF NOT EXISTS users` (which defines `first_name`, `last_name`, `is_active`, `is_ad_synced`) is a no-op because 001 already created the table; 012 only adds `source`, `status`, `password_hash` etc. The effective schema has none of `first_name`/`last_name`/`is_active`, yet `handleLogin` queries exactly those columns → every login attempt errors on fresh installs (previously masked as "invalid credentials" because `passwordHash` stays empty).
+
+7. **[backend/internal/api/users.go:519, 600-611] — `ad_users` table referenced but no migration creates it.** `CreateUserFromAD` and `ListADUsers` query `ad_users`, which exists in no migration (001–015). These endpoints 500 at runtime.
+
+8. **[backend/.env] — Default credentials and static secrets.** The working `.env` contains `ADMIN_PASSWORD="admin"` (bootstrap-seeded by `main.go:141-149`), `DATABASE_URL=postgres://admin:admin@...`, a static JWT secret, and a static AES key. `backend/.env.example:2` ships `JWT_SECRET="your-super-secret-random-string-here"` — a user copying it verbatim runs a known-signing-key server. `.env` is gitignored (verified), but the weak default admin password is seeded by code whenever env is set.
+
+---
+
+## 2. HIGH (Significant bugs or performance problems)
+
+1. **[agent/usermode/policy/PolicyEngine.h:167] + [agent/usermode/core/DLPAgent.cpp:472,525] — Data race on `PolicyEngine::rules_`.** `RefreshPolicy` calls `LoadRules` → `ClearRules()` (clear/push_back/sort) on `policyRefreshThread_` while `ProcessEvent` → `EvaluateEvent` iterates `rules_` on `eventLoopThread_`. No mutex protects the vector. Concurrent mutation during iteration is UB → crash. (Vectored into the same process's two threads, so this is a live race.)
+
+2. **[agent/usermode/cache/LocalCache.h:108] + [agent/usermode/core/DLPAgent.cpp:527,548,554,562] + [TelemetryCollector.cpp:198] — Single `sqlite3*` connection shared across ≥4 threads with no serialization.** `sqlite3_busy_timeout` only mitigates `SQLITE_BUSY`, not data races on the same connection. Interleaved `sqlite3_prepare/step/finalize` and `BEGIN IMMEDIATE/COMMIT/ROLLBACK` (LocalCache.cpp:357-366) can corrupt cache state or crash.
+
+3. **[agent/usermode/comms/HttpClient.cpp:82] — Uncaught `std::stoi` on malformed backend port.** A non-numeric or out-of-range port in the configured backend URL throws `std::invalid_argument`/`std::out_of_range` uncaught → `std::terminate` → agent crash from a config mistake.
+
+4. **[agent/usermode/core/DLPAgent.cpp:145-155] + [agent/usermode/comms/SecureComm.cpp:75] — Bearer token transmitted in cleartext.** The agent rewrites the backend URL to `http://<host>:8080` by default and explicitly logs "Using plain HTTP transport (no TLS/CA certificate required)". The JWT/device token is sent over cleartext HTTP, as are all event/heartbeat payloads.
+
+5. **[frontend/src/hooks/useEventStream.ts:49-70] — WebSocket opened with no authentication token.** The browser WebSocket API cannot set headers, and the hook connects to `/ws/events` with no `?token=` query param. The backend expects a JWT query parameter (`rest.go:241-258`), so the stream either never connects or (if the backend relaxed the check) is unauthenticated. Either way the feature is broken or insecure.
+
+6. **[frontend/src/pages/LoginPage.tsx:26-33] — Raw `axios.post` bypasses the global `apiClient`.** The login request misses the central 401/interceptor handling in `api/client.ts`. Any future API change to the interceptor (e.g., CSRF header, refresh-token handling) silently excludes login.
+
+7. **[backend/internal/api/devices.go:680-689] — Transaction commit error swallowed in heartbeat path.** `_, _ = tx.Exec(...)` ignores insert errors and `tx.Commit()` (line 689) is called without checking the returned error. A failed commit is silently treated as success → device/heartbeat data loss with no log.
+
+8. **[agent/usermode/quarantine/QuarantineManager.h:77] + [DLPAgent.cpp:487,663] + [TelemetryCollector.cpp:198] — Unlocked `lockedHandles_` vector + unbounded handle accumulation.** `push_back` is called from three threads with no mutex, and handles are only closed in `Shutdown`. Recurring quarantine events leak handles indefinitely and race on the vector.
+
+9. **[agent/usermode/comms/KernelComm.cpp:115-122,374] + [KernelComm.h:192-193] — Port handles closed/reopened concurrently with `FilterGetMessage`.** `ConnectToDriver` (also invoked from `DriverMonitorLoop`) can close/reopen `m_notifyPort` while `FilterGetMessage` is blocked on it → handle reuse/UAF.
+
+10. **[frontend/src/utils/getBackendUrl.ts:10-13] — All API traffic hardcoded to plain `http://`.** Login credentials, JWT bearer headers, and AD/LDAP passwords transit cleartext. Mixed-content blocks result if the UI is ever served over HTTPS.
+
+11. **[frontend/src/components/ManualRegisterModal.tsx:35,278,290-291] — Unauthenticated `| iex` bootstrap over HTTP with token embedded.** The PowerShell one-liner downloads and executes a script over cleartext HTTP and embeds the enrollment token in the script. The manifest is fetched over HTTP and is MITM-able despite the artifact SHA-256 check.
+
+12. **[backend/migrations/013:2] vs [backend/internal/api/events.go:76] — device identity mismatch.** `rest.go:673` builds event batches with `DeviceID: payload.Hostname` and agents generate `DEVICE-<hostname>-<rand>` IDs, while `devices.id` is a server-issued UUID. `events.go:77-80` then returns 404 "device not found" for every agent upload — event ingestion is broken.
+
+---
+
+## 3. MEDIUM (Correctness issues, missing edge cases, maintainability)
+
+1. **[backend/internal/api/events.go:186-206,265-275] and [telemetry/service.go:152-182], [incidents/manager.go:260-347], [keywords/manager.go:167-222], [classification/classifier.go:231-294], [api/dspm.go:164-186], [api/users.go:416-421] — SQL built by string concatenation.** All values are parameterized (`$N` placeholders), so this is *not* injectable, but the pattern is fragile. `telemetry/service.go:181-182` even uses the SQL string as a `fmt.Sprintf` format string — a stray `%` in a future query breaks it. Also `username ILIKE '%' || $n || '%'` (events.go:201) is an unbounded wildcard query (DoS vector on large tables).
+
+2. **[backend/internal/api/auth.go:121] — Login handler echoes raw decode error to client.** Minor info disclosure (SQL/libpq details can surface).
+
+3. **[backend/internal/api/ratelimit.go:15,77-83] — Rate limiter keyed only on `RemoteAddr`.** Behind any proxy/LB without `X-Forwarded-For` handling, all clients share one bucket; and no distributed protection exists. Cleanup goroutine runs forever.
+
+4. **[frontend/src/store/authStore.ts:52-68] + [frontend/src/pages/LoginPage.tsx:51] + [components/ProtectedRoute.tsx:14-49] — JWT persisted in localStorage in two places; auth gate is presence-based.** `auth-storage` (Zustand persist) plus a duplicate `auth_token` key. `ProtectedRoute` sets `isAuthenticated: true` purely because a token string exists, without server validation. `authStore.ts:53` accepts any `mock-` token, and `:59` decodes the JWT payload with `atob` (no signature verification).
+
+5. **[frontend/src/components/ADSyncModal.tsx:139-159] — Polling interval never cleaned up on unmount.** `setInterval` at 500 ms is only cleared on completion; closing the modal mid-sync leaks the interval forever and the 1.5 s `setTimeout` fires `onClose()` on an unmounted component.
+
+6. **[frontend] — No `AbortController` anywhere.** `useApi.ts:27-50` uses only a `cancelled` flag (request still completes server-side). Rapid filter changes in `FilesClassificationPage.tsx:55-58`, `KeywordsPage.tsx:53-56`, `UsersRolesPage.tsx:74-78` can have stale responses overwrite newer ones.
+
+7. **[frontend/src/pages/UsersRolesPage.tsx:131,168,589,652,800,958,975,1019], [EndpointsPage.tsx:132], [DiscoveryModal.tsx:76,92], [FilesClassificationPage.tsx:48], [KeywordsPage.tsx:24,472], [api/client.ts:7,13,42], [hooks/useApi.ts:8,21] — Widespread `any` instead of typed interfaces.** `(import.meta as any)` at `client.ts:7` defeats `ImportMetaEnv` typing; API responses are largely untyped → runtime field mismatches go uncaught.
+
+8. **[backend/internal/db/migrations.go:16-19,45] — Migration runner: CWD-dependent globs, no version tracking, no transaction.** Patterns are relative and CWD-sensitive; every startup re-executes every file with no `schema_migrations` table; each file runs as one `Exec` with no rollback. Error whitelist covers `42P07/42710/42701` but **not** `42703 undefined_column` or `42P01 undefined_table` — which is why migration 011's bug aborts the chain.
+
+9. **[backend/internal/api/rest.go:336-516] — Dev-mode fallback handlers return hardcoded/empty data.** `/api/v1/roles`, `/api/v1/permissions`, `/api/v1/users` (creates a user object that is never persisted but reports success), `/api/v1/event-logs`, `/api/v1/dspm/*`, `/api/v1/incidents`. These silently mask real database failures as "working" endpoints.
+
+10. **[infra/docker-compose.dev.yml:9,27] — Hardcoded dev DB password `postgres:dev`; backend service omits mandatory `AES_ENCRYPTION_KEY`/`JWT_SECRET`/`ENVIRONMENT`.** The backend container will fail to start (AES key is mandatory at `main.go:74-77`), so the compose file is broken as shipped.
+
+11. **[backend/fix_missing_tables.sql:630,681] — `device_id VARCHAR(255) REFERENCES devices(id)` conflicts with `devices.id UUID`.** The manual repair script's FK constraints are type-incompatible with the migrated schema unless `devices` was originally created by `devices.go:87` (`VARCHAR(255)`). The script also duplicates migration bodies, so it can silently diverge from the numbered migrations.
+
+12. **[backend/internal/api/devices.go:86-101] — `createDevicesTable` uses `CREATE TABLE IF NOT EXISTS` and `id VARCHAR(255)`.** A no-op when migration 003 (`id UUID`) already ran, so the runtime table keeps the UUID type while the code's expectations vary — the two schema definitions conflict and only the `VARCHAR(255)` variant works with the FK columns.
+
+13. **[backend/internal/discovery/nmap_scanner.go:139,142] — Queries/inserts `devices.mac_address` and `devices.agent_installed`, columns no migration creates.** Also references `registered_at`/`cpu_usage` etc. — device sync fails on a schema built purely from migrations.
+
+14. **[agent/usermode/comms/SecureComm.cpp:222-233,269-277] — Fresh `HttpClient` without `SetCaCertificatePath` for register/inventory; `grpcs://` URL breaks inventory.** Against a private-CA backend, registration and DSPM inventory silently fail TLS validation; the default `grpcs://localhost:50051` config makes `SendInventoryUpdate` never send (ParseUrl only accepts `http://`/`https://`, HttpClient.cpp:58-67).
+
+15. **[agent/usermode/comms/HttpClient.cpp:194] — `SetCaCertificatePath` leaks the previously-set `HCERTSTORE`.** Calling it twice leaks the first store.
+
+16. **[agent/usermode/comms/HttpClient.cpp:441] — Full HTTP response bodies (potentially tokens) logged to `agent.log`.** Sensitive data may be written to disk in plaintext.
+
+17. **[agent/usermode/comms/SecureComm.cpp:135-166] — Event JSON built by string concatenation without escaping.** File paths/process names containing `"` or control characters inject arbitrary JSON into telemetry payloads.
+
+18. **[agent/common/utils/NetworkUtils.cpp] (path referenced as `agent/usermode/utils/` in docs does not exist) — `GetAdaptersAddresses` is RAII-safe** (std::vector buffer); verified no leak, but the documented file path in audit scope is wrong and should be fixed for maintainability.
+
+19. **[backend/migrations/001:163] — Bcrypt hash is for plaintext `"password"`, not `"admin"`.** The seeded default admin's password is `password`, contradicting the SQL comments (156, 163). Muted impact because `ensureAdminUser` overwrites it, but misleading and a foot-gun.
+
+20. **[frontend/vite.config.ts:20-32] — `cors: true` (no allowlist) and hardcoded `localhost:8080` proxy targets; proxy is effectively dead code** because `client.ts`/`getBackendUrl()` call the backend directly on absolute `:8080`.
+
+---
+
+## 4. LOW (Code quality, style, minor improvements)
+
+1. **[backend] — `defer rows.Close()` without `rows.Err()` checks** in ~30 call sites (events.go:215,283,350; users.go:80,298,619,654,694,718; dspm.go:195,228; dashboard.go:129-340; incidents/manager.go:355,518; classifier.go:302,467; etc.). Scan errors are swallowed with `continue`.
+
+2. **[backend/cmd/server/main.go:107-109,112-119] — Migration, policy-init, and TLS failures are only logged; server continues without TLS** (log-and-continue masking misconfig).
+
+3. **[agent/usermode/notification/NotificationService.cpp:89-91] — `osvi = {sizeof(osvi)}` zero-initializes the version; toast support always false.** Logic bug permanently disables notifications.
+
+4. **[agent/usermode/telemetry/TelemetryCollector.cpp:149] — `driveRoot[] = "A:\\\\"` produces `"A:\\"`; `GetDriveTypeA` rejects it, so removable-drive monitoring never fires.**
+
+5. **[agent/usermode/comms/SecureComm.cpp:149], [EventSender.cpp:190], [HeartbeatManager.cpp:203] — `*std::gmtime(&time)` NULL deref risk** for out-of-range `time_t`.
+
+6. **[agent/Agent.cpp:291,368] — Stale stub self-deadlock: locks `telemetryMutex_` then `ProcessTelemetryQueue` re-locks it.**
+
+7. **[backend/internal/config/config.go:86] — Hardcoded fallback JWT secret `"dev-insecure-fallback-do-not-use-in-production"`** (dev-only, but a hardcoded signing key).
+
+8. **[agent/usermode/core/DLPAgent.cpp:659,675] — `event.FilePath[0]` / `WideToUtf8` used without validating `event.PathLength` against `DLP_MAX_PATH_LENGTH`.** OOB read possible on malformed kernel messages (kernel is trusted SYSTEM, so low).
+
+9. **[frontend/src/pages/LoginPage.tsx:52], [components/ManualRegisterModal.tsx:55], [components/DiscoveryModal.tsx:93-96] — `setTimeout` without unmount cleanup** (minor; fires on unmounted components).
+
+10. **[agent/usermode/classification/ClassificationService.cpp:788] — `new BYTE[sdSize]` instead of RAII (`std::vector<BYTE>`).** Correctly paired with `delete[]` today, but exception-unsafe; `m_protectedFiles.clear()` (L79) is also called without `m_filesMutex`.
+
+---
+
+## 5. Top 5 Recommended Fixes
+
+1. **Enforce role-based authorization.** In `AuthMiddleware` (rest.go:108-141), read `claims.Role` and reject any request whose role is not an admin console role; stop public `/api/devices/register` from minting bearer tokens that authenticate to admin routes (devices.go:495-502) — use a dedicated device credential or scope claim, and reject `role == "device"` on admin endpoints.
+
+2. **Make the migration chain correct and atomic.** Fix migration 011's `devices.registered_at` reference (011:68-71), whitelist `42703`/`42P01` or split files into safe statements, and add a `schema_migrations` tracking table so the runner is idempotent and CWD-independent (migrations.go). Reconcile the `users`, `devices`, and `ad_users` drift so code and migrations agree (add `first_name`/`last_name`/`is_active`, `agent_version`/`registered_at`/`cpu_usage`/`memory_usage`/`disk_usage`/`registration_method`/`mac_address`/`agent_installed`, and create `ad_users`).
+
+3. **Fix the `incidents.id` type mismatch** (events.go:436-446): stop inserting a UUID into the `BIGSERIAL` column (use `RETURNING id` like `incidents/manager.go:137-188`), and fix the device-identity mismatch (events.go:76 / rest.go:673) so agent events are actually persisted.
+
+4. **Harden the agent's concurrency.** Protect `PolicyEngine::rules_` with a mutex (or copy-on-write), wrap the shared SQLite connection in a single serialized accessor with a mutex, guard `lockedHandles_` with a mutex + dedup/close-on-overwrite, and synchronize `KernelComm` port-handle open/close. Catch `std::stoi` (HttpClient.cpp:82) so bad config degrades instead of terminating.
+
+5. **Eliminate cleartext transport and silent data logging.** Enforce HTTPS/TLS (or explicitly document and gate it) for frontend↔backend (`getBackendUrl.ts`), agent↔backend (`DLPAgent.cpp:145-155`), and the `| iex` bootstrap (`ManualRegisterModal.tsx`); remove the full-body telemetry log (`rest.go:616`) and the agent's response-body log (`HttpClient.cpp:441`); and stop persisting the JWT/refresh token in duplicate localStorage keys (authStore.ts + LoginPage.tsx:51).
+
+---
+
+*Note: This report is read-only — no code or configuration was modified. Findings were verified against the working tree at `F:\Projects\DLP`. The agent path referenced in the audit scope as `agent/usermode/utils/NetworkUtils.cpp` is actually `agent/common/utils/NetworkUtils.cpp`.*

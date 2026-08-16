@@ -16,6 +16,8 @@ LocalCache::~LocalCache() {
 }
 
 bool LocalCache::Initialize(const std::string& dbPath) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     dbPath_ = dbPath;
 
     // Ensure the parent directory exists before opening the database.
@@ -52,6 +54,8 @@ bool LocalCache::Initialize(const std::string& dbPath) {
 }
 
 void LocalCache::Shutdown() {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     if (db_) {
         sqlite3_close(reinterpret_cast<sqlite3*>(db_));
         db_ = nullptr;
@@ -100,6 +104,8 @@ bool LocalCache::CreateTables() {
 }
 
 bool LocalCache::StorePolicy(const std::string& policyJson) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     if (!initialized_) {
         return false;
     }
@@ -129,6 +135,8 @@ bool LocalCache::StorePolicy(const std::string& policyJson) {
 }
 
 std::string LocalCache::LoadPolicy() {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     if (!initialized_) {
         return "";
     }
@@ -153,6 +161,8 @@ std::string LocalCache::LoadPolicy() {
 }
 
 bool LocalCache::StoreEvent(const Event& event) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     if (!initialized_) {
         return false;
     }
@@ -182,6 +192,8 @@ bool LocalCache::StoreEvent(const Event& event) {
 }
 
 bool LocalCache::GetPendingEvents(std::vector<Event>& events, int batchSize) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     events.clear();
 
     if (!initialized_ || batchSize <= 0) {
@@ -217,6 +229,8 @@ bool LocalCache::GetPendingEvents(std::vector<Event>& events, int batchSize) {
 }
 
 bool LocalCache::GetPendingEventIds(std::vector<uint64_t>& ids, int batchSize) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     ids.clear();
 
     if (!initialized_ || batchSize <= 0) {
@@ -241,6 +255,8 @@ bool LocalCache::GetPendingEventIds(std::vector<uint64_t>& ids, int batchSize) {
 }
 
 bool LocalCache::MarkEventsSynced(const std::vector<uint64_t>& eventIds) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     if (!initialized_ || eventIds.empty()) {
         return true;
     }
@@ -321,6 +337,8 @@ bool LocalCache::StoreQuarantineRecord(const std::string& originalPath,
                                        const std::string& classification,
                                        const std::string& userId,
                                        const std::string& reason) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
     if (!initialized_) {
         return false;
     }

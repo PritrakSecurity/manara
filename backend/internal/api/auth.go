@@ -184,8 +184,10 @@ func handleLogin(w http.ResponseWriter, r *http.Request, database *db.Connection
 		name = username
 	}
 
-	// Issue a real, signed JWT (never a mock token).
-	token, err := generateToken(userID, req.Email, name, role)
+	// Every console login authenticates an administrator of the DLP console.
+	// The JWT role claim is fixed to "admin" so AuthMiddleware can distinguish
+	// human admins from device tokens (role == "device").
+	token, err := generateToken(userID, req.Email, name, "admin")
 	if err != nil {
 		log.Printf("Login failed: could not sign token: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -197,7 +199,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request, database *db.Connection
 	}
 
 	// Short-lived refresh token for the admin client.
-	refreshToken, err := generateToken(userID, req.Email, name, role)
+	refreshToken, err := generateToken(userID, req.Email, name, "admin")
 	if err != nil {
 		refreshToken = ""
 	}

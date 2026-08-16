@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../core/EventTypes.h"
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -108,6 +109,12 @@ private:
     void* db_; // SQLite database handle (void* to avoid including sqlite3.h in header)
     std::string dbPath_;
     bool initialized_;
+
+    // Serializes all access to the shared sqlite3* connection. The cache is
+    // used from the event loop, policy refresh, quarantine and telemetry
+    // threads; SQLite connections are not safe to share across threads without
+    // external synchronization.
+    std::mutex dbMutex_;
 
     bool CreateTables();
     bool BeginTransaction();

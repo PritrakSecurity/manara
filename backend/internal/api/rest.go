@@ -101,6 +101,51 @@ func isPublicPath(path string) bool {
 	return false
 }
 
+// isAdminEndpoint reports whether the request path targets an administrative
+// endpoint reserved for admin-console tokens. Device tokens (role == "device")
+// are denied these paths; they are only permitted on the agent-facing
+// heartbeat, telemetry and enrollment routes, which are public paths and never
+// reach the role check in AuthMiddleware.
+func isAdminEndpoint(path string) bool {
+	adminExact := map[string]bool{
+		"/api/devices":   true,
+		"/api/events":    true,
+		"/api/incidents": true,
+		"/api/settings":  true,
+	}
+	if adminExact[path] {
+		return true
+	}
+
+	adminPrefixes := []string{
+		"/api/devices/",       // device list/details/logs/discovery (heartbeat & register are public)
+		"/api/policies",       // policy management
+		"/api/v1/users",       // user management
+		"/api/v1/roles",       // role management
+		"/api/v1/permissions", // permission management
+		"/api/v1/dspm",        // DSPM inventory
+		"/api/v1/event-logs",  // event logs
+		"/api/v1/incidents",   // incidents
+		"/api/v1/ad/",         // AD users
+		"/api/events",         // event logs
+		"/api/incidents",      // incidents
+		"/api/keywords",       // keyword management
+		"/api/files/",         // classified files
+		"/api/approvals",      // approval workflow
+		"/api/rules",          // classification rules
+		"/api/dashboard",      // dashboard stats
+		"/api/ad/",            // AD management
+		"/api/settings",       // settings
+	}
+	for _, p := range adminPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // AuthMiddleware validates the JWT bearer token on all administrative
 // endpoints. Requests without a token, or with an invalid/expired token, are
 // rejected with HTTP 401. Authenticated identity claims are stored on the
@@ -131,6 +176,20 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "Unauthorized",
 				"message": "invalid or expired token",
+			})
+			return
+		}
+
+		// Enforce role-based authorization: device tokens (minted by the
+		// public device-enrollment endpoint) must never access administrative
+		// endpoints. They are only allowed on the heartbeat, telemetry and
+		// enrollment routes, which are public paths handled above.
+		if claims.Role == "device" && isAdminEndpoint(r.URL.Path) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "Forbidden",
+				"message": "device tokens cannot access administrative endpoints",
 			})
 			return
 		}
@@ -606,14 +665,13 @@ func NewRouter(
 			return
 		}
 
-		// Read raw body for debugging
+		// Read raw body for parsing
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("[ERROR] Failed to read telemetry body: %v", err)
 			http.Error(w, "failed to read body", http.StatusBadRequest)
 			return
 		}
-		log.Printf("[TELEMETRY-RAW] Received %d bytes: %s", len(bodyBytes), string(bodyBytes))
 
 		var payload struct {
 			Hostname  string                 `json:"hostname"`
