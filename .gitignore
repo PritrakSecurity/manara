@@ -125,6 +125,7 @@ dspm_status.txt
 explained_v2.txt
 structure.txt
 prelaunch.txt
+CODE_AUDIT_REPORT.txt
 
 # Build artifacts
 agent-build/
