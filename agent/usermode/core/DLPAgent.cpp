@@ -612,8 +612,8 @@ void DLPAgent::InitializeKernelIntegration() {
     if (!kernelComm.Initialize()) {
         LOG_WARNING("Kernel driver not available; reconnect will be attempted in background");
     } else {
-        // Enforce (not audit) and fail closed when no policy is cached.
-        kernelComm.UpdateConfig(true, false, 65536, 300);
+        // Enforce (not audit) and fail open (allow + audit) when no policy is cached.
+        kernelComm.UpdateConfig(false, false, 65536, 300);
     }
 }
 
@@ -638,7 +638,7 @@ void DLPAgent::DriverMonitorLoop() {
 
             if (kernelComm.Initialize()) {
                 attempt = 0;
-                kernelComm.UpdateConfig(true, false, 65536, 300);
+                kernelComm.UpdateConfig(false, false, 65536, 300);
                 LOG_INFO("Kernel driver connection established");
             } else if (attempt < maxAttempts) {
                 attempt++;

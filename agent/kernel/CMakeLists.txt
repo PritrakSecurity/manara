@@ -3,29 +3,17 @@ if(NOT WDK_FOUND)
     message(FATAL_ERROR "WDK is required for kernel-mode components")
 endif()
 
-# Minifilter driver
+# Minifilter driver (real driver sources only)
 wdk_add_library(dlp_minifilter STATIC
-    minifilter/driver.cpp
-    minifilter/driver.h
-    minifilter/callback.cpp
-    minifilter/callback.h
+    minifilter/dlp_driver_core.c
+    minifilter/dlp_policy_cache.c
+    minifilter/dlp_process_tracker.c
+    minifilter/dlp_kernel_types.h
+    minifilter/dlp_process_tracker.h
 )
 
 target_include_directories(dlp_minifilter PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/minifilter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/shared
 )
-
-# WFP callout driver (optional, separate driver)
-wdk_add_library(dlp_wfp STATIC
-    wfp/callout.cpp
-    wfp/callout.h
-)
-
-target_include_directories(dlp_wfp PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/wfp
-)
-
-# Note: Actual driver compilation requires WDK build environment
-# This is a skeleton structure
