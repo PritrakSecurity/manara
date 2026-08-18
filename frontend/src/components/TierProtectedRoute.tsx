@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTier, routeTiers, isRouteLocked } from '../config/tiers';
-import { useUIStore } from '../stores/uiStore';
+import { useUIStore } from '../store/uiStore';
 import UpgradeGateModal from './UpgradeGateModal';
 
 interface TierProtectedRouteProps {

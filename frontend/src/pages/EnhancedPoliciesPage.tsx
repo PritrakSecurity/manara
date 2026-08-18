@@ -6,7 +6,7 @@ export default function EnhancedPoliciesPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
-          <Shield className="w-8 h-8 text-[#fd382f]" />
+          <Shield className="w-8 h-8 text-brand" />
           DLP Policies
         </h1>
         <p className="text-gray-600 mt-1">Define and manage data loss prevention policies</p>

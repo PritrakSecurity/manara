@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Download, Monitor, Activity, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Download, Activity, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { apiClient } from '../api/client';
+import Modal from './common/Modal';
 
 interface DeviceDetailsModalProps {
   deviceId: string | null;
@@ -92,26 +93,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div 
-        className="modal-backdrop"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="modal-container">
-        <div className="modal-header">
-          <div className="modal-title">
-            <Monitor className="modal-icon" size={24} />
-            <h2>{device?.hostname || 'Device Details'}</h2>
-          </div>
-          <button className="modal-close-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="modal-body">
+    <Modal isOpen={isOpen} onClose={onClose} title={device?.hostname || 'Device Details'} size="lg">
           {loading && (
             <div className="modal-loading">
               <Activity className="spinning" size={32} />
@@ -307,13 +289,12 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
               </section>
             </>
           )}
-        </div>
 
-        <div className="modal-footer">
-          <button onClick={onClose} className="btn-secondary">
-            Close
-          </button>
-        </div>
+      <div className="mt-6 flex justify-end">
+        <button onClick={onClose} className="btn-secondary">
+          Close
+        </button>
+      </div>
 
         <style>{`
           .modal-backdrop {
@@ -362,11 +343,11 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
             margin: 0;
             font-size: 24px;
             font-weight: 700;
-            color: #1e293b;
+            color: var(--text-primary);
           }
 
           .modal-icon {
-            color: #fd382f;
+            color: var(--color-brand-primary);
           }
 
           .modal-close-btn {
@@ -418,7 +399,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
           .detail-section h3 {
             font-size: 18px;
             font-weight: 600;
-            color: #1e293b;
+            color: var(--text-primary);
             margin: 0 0 16px;
           }
 
@@ -460,7 +441,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
 
           .info-item .detail-value {
             font-size: 15px;
-            color: #1e293b;
+            color: var(--text-primary);
           }
 
           .health-grid {
@@ -514,7 +495,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
           }
 
           .logs-table thead {
-            background: #f8fafc;
+            background: var(--bg-page-surface);
             border-bottom: 2px solid #e2e8f0;
           }
 
@@ -589,7 +570,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
             padding: 40px;
             text-align: center;
             color: #64748b;
-            background: #f8fafc;
+            background: var(--bg-page-surface);
             border-radius: 8px;
           }
 
@@ -598,7 +579,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            background: #fd382f;
+            background: var(--color-brand-primary);
             color: white;
             border: none;
             border-radius: 6px;
@@ -609,14 +590,14 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
           }
 
           .btn-download:hover {
-            background: #e02f26;
+            background: var(--color-brand-hover);
             transform: translateY(-1px);
           }
 
           .btn-retry {
             margin-top: 16px;
             padding: 10px 20px;
-            background: #fd382f;
+            background: var(--color-brand-primary);
             color: white;
             border: none;
             border-radius: 6px;
@@ -637,7 +618,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
           }
 
           .btn-secondary:hover {
-            background: #f8fafc;
+            background: var(--bg-page-surface);
             border-color: #cbd5e1;
           }
 
@@ -729,8 +710,7 @@ export function DeviceDetailsModal({ deviceId, isOpen, onClose }: DeviceDetailsM
             }
           }
         `}</style>
-      </div>
-    </>
+    </Modal>
   );
 }
 

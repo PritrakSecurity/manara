@@ -169,8 +169,8 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
         {/* Header */}
         <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#fd382f]/10 rounded-lg flex items-center justify-center">
-              <Server className="h-6 w-6 text-[#fd382f]" />
+            <div className="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center">
+              <Server className="h-6 w-6 text-brand" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Active Directory Integration</h2>
@@ -216,7 +216,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                   name="server"
                   value={config.server}
                   onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition"
                   placeholder="dc1.corp.local"
                       disabled={loading || testing}
                 />
@@ -232,7 +232,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                     name="port"
                     value={config.port}
                     onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition"
                         disabled={loading || testing}
                   />
                 </div>
@@ -246,7 +246,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                     name="username"
                     value={config.username}
                     onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition"
                     placeholder="administrator@corp.local"
                         disabled={loading || testing}
                   />
@@ -262,7 +262,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                   name="password"
                   value={config.password}
                   onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition"
                       disabled={loading || testing}
                 />
               </div>
@@ -276,7 +276,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                   name="baseDN"
                   value={config.baseDN}
                   onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition"
                   placeholder="CN=Computers,DC=corp,DC=local"
                       disabled={loading || testing}
                 />
@@ -289,7 +289,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                 id="useTLS"
                 checked={useTLS}
                 onChange={(e) => setUseTLS(e.target.checked)}
-                      className="w-4 h-4 text-[#fd382f] border-gray-300 rounded focus:ring-[#fd382f]"
+                      className="w-4 h-4 text-brand border-gray-300 rounded focus:ring-brand"
                       disabled={loading || testing}
               />
                     <label htmlFor="useTLS" className="text-sm text-gray-700 cursor-pointer">
@@ -394,11 +394,11 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                   <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-700 font-medium">Progress</span>
-                      <span className="text-[#fd382f] font-bold">{progress}%</span>
+                      <span className="text-brand font-bold">{progress}%</span>
                     </div>
                     <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-[#fd382f] to-[#e02f26] transition-all duration-300"
+                        className="h-full bg-gradient-to-r from-brand to-brand-hover transition-all duration-300"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -420,7 +420,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                   </div>
 
                   <div className="text-center py-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#fd382f] mx-auto mb-2" />
+                    <Loader2 className="h-8 w-8 animate-spin text-brand mx-auto mb-2" />
                     <p className="text-gray-600">Syncing devices from Active Directory...</p>
                   </div>
                 </div>
@@ -457,7 +457,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
               <button
                 onClick={handleStartSync}
                 disabled={loading || connectionStatus !== 'success'}
-                className="flex-1 px-4 py-2 bg-[#fd382f] hover:bg-[#e02f26] text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
+                className="flex-1 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
               >
                 {loading ? (
                   <>
@@ -485,7 +485,7 @@ export default function ADSyncModal({ isOpen, onClose, onSyncComplete, onSync }:
                     if (onSyncComplete) onSyncComplete();
                     onClose();
                   }}
-                className="flex-1 px-4 py-2 bg-[#fd382f] hover:bg-[#e02f26] text-white rounded-lg transition-colors font-medium"
+                className="flex-1 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors font-medium"
                 >
                   Import Devices
                 </button>

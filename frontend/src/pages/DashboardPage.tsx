@@ -104,7 +104,7 @@ const DashboardPage: React.FC = () => {
         <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Pending Approvals</span>
-            <span className="text-2xl font-bold text-[#fd382f]">{stats?.pending_approvals || 0}</span>
+            <span className="text-2xl font-bold text-brand">{stats?.pending_approvals || 0}</span>
           </div>
         </div>
         <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
@@ -201,7 +201,7 @@ const DashboardPage: React.FC = () => {
                         {violator.critical_count} critical
                       </span>
                     )}
-                    <span className="text-[#fd382f] font-semibold">
+                    <span className="text-brand font-semibold">
                       {violator.violations} violations
                     </span>
                   </div>

@@ -1,6 +1,7 @@
-﻿import { useMemo, useState } from 'react'
-import { X, Copy, Download, CheckCircle, Terminal, Apple, Monitor, Code2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Copy, Download, CheckCircle, Terminal, Apple, Monitor, Code2 } from 'lucide-react'
 import { getBackendUrl } from '../utils/getBackendUrl'
+import Modal from './common/Modal'
 
 interface ManualRegisterModalProps {
   isOpen: boolean
@@ -78,31 +79,13 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[120] p-4">
-      <div className="bg-white rounded-xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#fd382f]/10 rounded-lg flex items-center justify-center">
-              <Terminal className="h-6 w-6 text-[#fd382f]" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Manual Agent Installation</h2>
-              <p className="text-gray-600 text-sm mt-1">
-                Deploy the Pritrak DLP Agent on Windows devices
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-400" />
-          </button>
-        </div>
+    <Modal isOpen={isOpen} onClose={onClose} title="Manual Agent Installation" size="xl">
+      <p className="text-secondary text-sm mb-4">
+        Deploy the Pritrak DLP Agent on Windows devices
+      </p>
 
         {/* Instructions + Dynamic server config */}
-        <div className="p-6 border-b border-gray-200 bg-blue-50 flex-shrink-0">
+        <div className="p-6 border border-gray-200 bg-blue-50 rounded-lg mb-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-3">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Installation Instructions</h3>
@@ -130,7 +113,7 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
                     value={serverHost}
                     onChange={(e)=>setServerHost(e.target.value)}
                     placeholder="e.g. 192.168.1.10 or dlp.example.com"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
                   />
                 </div>
                 <div className="col-span-2">
@@ -139,7 +122,7 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
                     value={serverPort}
                     onChange={(e)=>setServerPort(e.target.value.replace(/[^0-9]/g,''))}
                     placeholder="8080"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
                   />
                 </div>
               </div>
@@ -149,7 +132,7 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
                   value={enrollToken}
                   onChange={(e)=>setEnrollToken(e.target.value.trim())}
                   placeholder="pk_enr_..."
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-mono focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-mono focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
                 />
               </div>
               <p className="text-xs text-gray-600">These values are embedded into the script below and update in real-time. The enrollment token is consumed by the agent after it enrolls.</p>
@@ -163,21 +146,21 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={()=>setActiveTab('windows')}
-              className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-2 transition-colors ${activeTab==='windows' ? 'bg-[#fd382f] text-white border-[#fd382f]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-2 transition-colors ${activeTab==='windows' ? 'bg-brand text-white border-brand' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
             >
               <Monitor className="w-4 h-4" />
               Windows
             </button>
             <button
               onClick={()=>setActiveTab('mac')}
-              className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-2 transition-colors ${activeTab==='mac' ? 'bg-[#fd382f] text-white border-[#fd382f]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-2 transition-colors ${activeTab==='mac' ? 'bg-brand text-white border-brand' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
             >
               <Apple className="w-4 h-4" />
               macOS
             </button>
             <button
               onClick={()=>setActiveTab('linux')}
-              className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-2 transition-colors ${activeTab==='linux' ? 'bg-[#fd382f] text-white border-[#fd382f]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-2 transition-colors ${activeTab==='linux' ? 'bg-brand text-white border-brand' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
             >
               <Terminal className="w-4 h-4" />
               Linux
@@ -241,7 +224,7 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
         </div>
 
         {/* Action Buttons */}
-        <div className="p-6 border-t border-gray-200 flex gap-3 flex-shrink-0 bg-gray-50">
+        <div className="p-6 border-t border-gray-200 flex gap-3 flex-shrink-0 bg-gray-50 mt-6">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
@@ -251,7 +234,7 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
           {activeTab === 'windows' ? (
             <button
               onClick={handleDownload}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#fd382f] hover:bg-[#e02f26] text-white rounded-lg transition-colors font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors font-medium"
             >
               <Download className="h-4 w-4" />
               Download Script
@@ -265,8 +248,7 @@ export default function ManualRegisterModal({ isOpen, onClose }: ManualRegisterM
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

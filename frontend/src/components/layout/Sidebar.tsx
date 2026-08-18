@@ -13,7 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTier, routeTiers, isRouteLocked } from '../../config/tiers';
-import { useUIStore } from '../../stores/uiStore';
+import { useUIStore } from '../../store/uiStore';
 
 interface NavItem {
   path: string;
@@ -119,7 +119,13 @@ const navSections: NavSection[] = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  mobileOpen = false,
+  onClose,
+}: {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}) {
   const { user } = useAuthStore();
   const [openSection, setOpenSection] = useState<string>('command-center');
   const tier = useTier();
@@ -130,7 +136,15 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="app-sidebar">
+    <>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />
+      )}
+      <aside
+        className={`app-sidebar fixed lg:static top-0 left-0 z-50 h-full transition-transform duration-300 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
       <nav className="sidebar-nav">
         {navSections.map((section) => {
           const isOpen = openSection === section.id;
@@ -165,7 +179,7 @@ export default function Sidebar() {
                           }
                         }}
                         className={({ isActive }) =>
-                          `nav-item sub-item ${isActive ? 'active' : ''}`
+                          `manara-nav-item nav-item sub-item ${isActive ? 'manara-nav-item-active active' : ''}`
                         }
                       >
                         <item.icon size={16} />
@@ -231,8 +245,8 @@ export default function Sidebar() {
 
         .nav-item.active {
           background: #262a2c;
-          color: #ff5a50;
-          border-left-color: #ff5a50;
+          color: #ffffff;
+          border-left-color: var(--color-brand-primary);
           font-weight: 600;
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
@@ -265,7 +279,7 @@ export default function Sidebar() {
         }
 
         .section-header.open {
-          color: #ff5a50;
+          color: var(--color-brand-primary);
         }
 
         .section-icon {
@@ -274,7 +288,7 @@ export default function Sidebar() {
         }
 
         .section-header.open .section-icon {
-          color: #ff5a50;
+          color: var(--color-brand-primary);
         }
 
         .section-label {
@@ -309,13 +323,13 @@ export default function Sidebar() {
         }
 
         .nav-item.sub-item.active svg {
-          color: #ff5a50;
+          color: var(--color-brand-primary);
         }
 
         .nav-item.sub-item .sub-lock {
           margin-left: auto;
           flex-shrink: 0;
-          color: #ff5a50;
+          color: var(--color-brand-primary);
         }
 
         .user-profile {
@@ -344,7 +358,7 @@ export default function Sidebar() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #fd382f;
+          background: var(--color-brand-primary);
           color: white;
           font-weight: 700;
           font-size: 14px;
@@ -372,6 +386,7 @@ export default function Sidebar() {
           text-overflow: ellipsis;
         }
       `}</style>
-    </aside>
+      </aside>
+    </>
   );
 }

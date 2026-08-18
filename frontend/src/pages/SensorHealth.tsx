@@ -19,7 +19,17 @@ export default function SensorHealth() {
     setLoading(true);
     try {
       const res = await apiClient.get('/api/devices');
-      setDevices(Array.isArray(res.data) ? res.data : []);
+      // The backend returns a bare array; some endpoints wrap it as {devices:[...]}.
+      const raw = Array.isArray(res.data) ? res.data : (res.data?.devices || []);
+      const mapped: Device[] = raw.map((d: any) => ({
+        id: d.id || d.hostname,
+        hostname: d.hostname,
+        ipAddress: d.ipAddress || d.ip_address,
+        agentVersion: d.agentVersion || d.agent_version,
+        status: d.status,
+        lastSeen: d.lastSeen || d.last_seen,
+      }));
+      setDevices(mapped);
     } catch {
       // best-effort
     } finally {
@@ -52,7 +62,7 @@ export default function SensorHealth() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           <RefreshCw size={16} />
           Refresh
@@ -61,7 +71,7 @@ export default function SensorHealth() {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <HeartPulse className="h-5 w-5 text-[#fd382f]" />
+          <HeartPulse className="h-5 w-5 text-brand" />
           <h2 className="text-lg font-semibold text-gray-900">Connected Agents</h2>
         </div>
         <div className="overflow-x-auto">

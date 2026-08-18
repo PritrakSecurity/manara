@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import React from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { ThemeProvider } from './components/ThemeProvider'
@@ -9,7 +10,6 @@ import MainLayout from './components/MainLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import { EndpointsPage } from './pages/EndpointsPage'
-import { IncidentsPage } from './pages/IncidentsPage'
 import KeywordsPage from './pages/KeywordsPage'
 import ApprovalsPage from './pages/ApprovalsPage'
 import EnhancedIncidentsPage from './pages/EnhancedIncidentsPage'
@@ -31,6 +31,7 @@ import IncidentQueueTriage from './pages/IncidentQueueTriage'
 import FrameworkMapping from './pages/FrameworkMapping'
 import SensorHealth from './pages/SensorHealth'
 import LicenseUsage from './pages/LicenseUsage'
+import CloudSaaS from './pages/CloudSaaS'
 
 const comingSoonRoutes = [
   // Data Posture (DSPM)
@@ -54,7 +55,6 @@ const comingSoonRoutes = [
   { path: '/compliance/retention-residency', title: 'Retention & Residency Controls' },
   { path: '/compliance/attestation-signoff', title: 'Attestation & Sign-off' },
   // Coverage & Integrations
-  { path: '/coverage/cloud-saas', title: 'Cloud & SaaS Connectors' },
   { path: '/coverage/network-email', title: 'Network & Email Gateways' },
   { path: '/coverage/identity-sync', title: 'Identity (IAM/IdP) Sync' },
   { path: '/coverage/siem-soar-exports', title: 'SIEM, SOAR & Ticketing Exports' },
@@ -64,410 +64,82 @@ const comingSoonRoutes = [
   { path: '/administration/audit-log', title: 'Platform Audit Log' },
 ]
 
+const layout = (node: React.ReactNode) => (
+  <ProtectedRoute>
+    <TierProtectedRoute>
+      <MainLayout>{node}</MainLayout>
+    </TierProtectedRoute>
+  </ProtectedRoute>
+)
+
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <BrowserRouter>
-          <Routes>
-            <Route
-              path="/login"
-              element={
-                <TierProtectedRoute>
-                  <LoginPage />
-                </TierProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <DashboardPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/policies"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EnhancedPoliciesPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/devices"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EndpointsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/incidents"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <IncidentsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/settings"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EnhancedSettingsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/keywords"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <KeywordsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/approvals"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ApprovalsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/incidents-enhanced"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EnhancedIncidentsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/files"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <FilesClassificationPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/classification-rules"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ClassificationRules />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/reports"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ReportsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/threat-detection"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ThreatDetection />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/event-logs"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EventLogs />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/users"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <UsersRoles />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Mapped enterprise navigation routes (existing pages) */}
-            <Route
-              path="/coverage/endpoints"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EndpointsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/detection/event-explorer"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EventLogs />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/detection/incident-queue-triage"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <IncidentQueueTriage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/policy-studio/policy-builder"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EnhancedPoliciesPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/policy-studio/classifiers-rules"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ClassificationRules />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/policy-studio/dictionaries-edm"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <KeywordsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/administration/users-rbac"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <UsersRoles />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/administration/workspace"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <EnhancedSettingsPage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/data-posture/inventory-asset-map"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <InventoryAssetMap />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Command Center dashboards */}
-            <Route
-              path="/command-center/executive-overview"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ExecutiveOverview />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/command-center/posture-risk-scorecard"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <PostureRiskScorecard />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/command-center/threat-incident-pulse"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ThreatIncidentPulse />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/command-center/compliance-snapshot"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <ComplianceSnapshot />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/compliance/framework-mapping"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <FrameworkMapping />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/coverage/sensor-health"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <SensorHealth />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/administration/license-usage"
-              element={
-                <ProtectedRoute>
-                  <TierProtectedRoute>
-                    <MainLayout>
-                      <LicenseUsage />
-                    </MainLayout>
-                  </TierProtectedRoute>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* New enterprise navigation placeholder routes */}
-            {comingSoonRoutes.map((route) => (
+            <Routes>
               <Route
-                key={route.path}
-                path={route.path}
+                path="/login"
                 element={
-                  <ProtectedRoute>
-                    <TierProtectedRoute>
-                      <MainLayout>
-                        <ComingSoonPage title={route.title} />
-                      </MainLayout>
-                    </TierProtectedRoute>
-                  </ProtectedRoute>
+                  <TierProtectedRoute>
+                    <LoginPage />
+                  </TierProtectedRoute>
                 }
               />
-            ))}
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-    </QueryClientProvider>
+              {/* Command Center */}
+              <Route path="/command-center/dashboard" element={layout(<DashboardPage />)} />
+              <Route path="/command-center/executive-overview" element={layout(<ExecutiveOverview />)} />
+              <Route path="/command-center/posture-risk-scorecard" element={layout(<PostureRiskScorecard />)} />
+              <Route path="/command-center/threat-incident-pulse" element={layout(<ThreatIncidentPulse />)} />
+              <Route path="/command-center/compliance-snapshot" element={layout(<ComplianceSnapshot />)} />
+
+              {/* Data Posture (DSPM) */}
+              <Route path="/data-posture/inventory-asset-map" element={layout(<InventoryAssetMap />)} />
+              <Route path="/data-posture/files-classification" element={layout(<FilesClassificationPage />)} />
+
+              {/* Detection & Investigation */}
+              <Route path="/detection/event-explorer" element={layout(<EventLogs />)} />
+              <Route path="/detection/incident-queue-triage" element={layout(<IncidentQueueTriage />)} />
+              <Route path="/detection/incidents-enhanced" element={layout(<EnhancedIncidentsPage />)} />
+              <Route path="/detection/approvals" element={layout(<ApprovalsPage />)} />
+              <Route path="/detection/threat-detection" element={layout(<ThreatDetection />)} />
+
+              {/* Policy Studio */}
+              <Route path="/policy-studio/policy-builder" element={layout(<EnhancedPoliciesPage />)} />
+              <Route path="/policy-studio/classifiers-rules" element={layout(<ClassificationRules />)} />
+              <Route path="/policy-studio/dictionaries-edm" element={layout(<KeywordsPage />)} />
+
+              {/* Compliance & Audit */}
+              <Route path="/compliance/framework-mapping" element={layout(<FrameworkMapping />)} />
+              <Route path="/compliance/reports" element={layout(<ReportsPage />)} />
+
+              {/* Coverage & Integrations */}
+              <Route path="/coverage/endpoints" element={layout(<EndpointsPage />)} />
+              <Route path="/coverage/sensor-health" element={layout(<SensorHealth />)} />
+              <Route path="/coverage/cloud-saas" element={layout(<CloudSaaS />)} />
+
+              {/* Administration */}
+              <Route path="/administration/users-rbac" element={layout(<UsersRoles />)} />
+              <Route path="/administration/workspace" element={layout(<EnhancedSettingsPage />)} />
+              <Route path="/administration/license-usage" element={layout(<LicenseUsage />)} />
+
+              {/* New enterprise navigation placeholder routes */}
+              {comingSoonRoutes.map((route) => (
+                <Route
+                  key={route.path}
+                  path={route.path}
+                  element={layout(<ComingSoonPage title={route.title} />)}
+                />
+              ))}
+
+              <Route path="/" element={<Navigate to="/command-center/executive-overview" replace />} />
+              <Route path="*" element={<Navigate to="/command-center/executive-overview" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   )
 }

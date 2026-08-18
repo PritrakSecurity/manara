@@ -115,7 +115,7 @@ const ApprovalsPage: React.FC = () => {
           onClick={() => setActiveTab('pending')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === 'pending'
-              ? 'text-[#fd382f] border-b-2 border-[#fd382f]'
+              ? 'text-brand border-b-2 border-brand'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
@@ -125,7 +125,7 @@ const ApprovalsPage: React.FC = () => {
           onClick={() => setActiveTab('history')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === 'history'
-              ? 'text-[#fd382f] border-b-2 border-[#fd382f]'
+              ? 'text-brand border-b-2 border-brand'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >

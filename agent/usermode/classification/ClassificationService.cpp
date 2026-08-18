@@ -75,6 +75,9 @@ void ClassificationService::Shutdown() {
 
     LOG_INFO("Shutting down classification service");
 
+    // Abort any in-flight DCI extraction at the next safe point.
+    m_dciInspector.Cancel();
+
     ClearRules();
     m_protectedFiles.clear();
     m_kernelComm = nullptr;
@@ -560,185 +563,8 @@ bool ClassificationService::MatchPath(
 // PHASE 2 DEEP CONTENT INSPECTION (DCI)
 // ============================================================================
 
-// Text extensions eligible for DCI. All other files are skipped.
-static const std::vector<std::wstring> kDciTextExtensions = {
-    L".txt", L".csv", L".json", L".xml", L".log", L".ini"
-};
-
-// Performance guardrails: files larger than 10MB are never inspected, and the
-// first 1KB is probed for null bytes to reject binary files early.
-static const size_t kDciMaxFileBytes = 10 * 1024 * 1024;
-static const size_t kDciNullProbeBytes = 1024;
+// The snippet is always masked and capped so it never contains raw PII.
 static const size_t kDciSnippetMaxChars = 50;
-
-std::string ClassificationService::ExtractTextFromFile(const std::wstring& filePath) {
-    // Only process supported text extensions (case-insensitive).
-    size_t dotPos = filePath.rfind(L'.');
-    if (dotPos == std::wstring::npos) {
-        return "";
-    }
-    std::wstring ext = filePath.substr(dotPos);
-    std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
-
-    bool supported = false;
-    for (const auto& candidate : kDciTextExtensions) {
-        if (ext == candidate) {
-            supported = true;
-            break;
-        }
-    }
-    if (!supported) {
-        return "";
-    }
-
-    // Skip files larger than 10MB.
-    std::error_code ec;
-    uintmax_t fileSize = 0;
-    fileSize = std::filesystem::file_size(filePath, ec);
-    if (ec || fileSize > kDciMaxFileBytes) {
-        return "";
-    }
-
-    std::ifstream file(filePath, std::ios::binary);
-    if (!file.is_open()) {
-        return "";
-    }
-
-    // Probe the first 1KB for null bytes; if present, treat as binary and skip.
-    std::string probe(kDciNullProbeBytes, '\0');
-    file.read(&probe[0], static_cast<std::streamsize>(kDciNullProbeBytes));
-    std::streamsize probeRead = file.gcount();
-    for (std::streamsize i = 0; i < probeRead; ++i) {
-        if (probe[static_cast<size_t>(i)] == '\0') {
-            return "";
-        }
-    }
-
-    // Read the full (bounded) file content. The file is guaranteed to be
-    // <= 10MB and text-like, so loading it into a string is safe.
-    file.clear();
-    file.seekg(0, std::ios::beg);
-
-    std::string content;
-    content.reserve(static_cast<size_t>(fileSize));
-    char buffer[65536];
-    while (file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
-        content.append(buffer, static_cast<size_t>(file.gcount()));
-    }
-
-    // Convert raw bytes to UTF-8. ASCII-compatible input is already valid;
-    // strip a UTF-8 BOM if present so the snippet is clean.
-    if (content.size() >= 3 &&
-        static_cast<unsigned char>(content[0]) == 0xEF &&
-        static_cast<unsigned char>(content[1]) == 0xBB &&
-        static_cast<unsigned char>(content[2]) == 0xBF) {
-        content.erase(0, 3);
-    }
-
-    return content;
-}
-
-bool ClassificationService::IsValidLuhn(const std::string& digits) const {
-    if (digits.empty()) {
-        return false;
-    }
-    int sum = 0;
-    bool doubleDigit = false;
-    for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i) {
-        int n = digits[static_cast<size_t>(i)] - '0';
-        if (n < 0 || n > 9) {
-            return false;
-        }
-        if (doubleDigit) {
-            n *= 2;
-            if (n > 9) {
-                n -= 9;
-            }
-        }
-        sum += n;
-        doubleDigit = !doubleDigit;
-    }
-    return (sum % 10) == 0;
-}
-
-std::vector<std::string> ClassificationService::ScanTextForPII(const std::string& text) {
-    std::vector<std::string> matches;
-
-    // Credit cards: 13-16 digits with optional separators. Luhn-checked to
-    // avoid false positives.
-    static const std::regex ccRegex(R"(\b(?:\d[ -]*?){13,16}\b)");
-    for (std::sregex_iterator it(text.begin(), text.end(), ccRegex), end;
-         it != end; ++it) {
-        std::string candidate = it->str();
-        std::string digits;
-        for (char c : candidate) {
-            if (c >= '0' && c <= '9') {
-                digits.push_back(c);
-            }
-        }
-        if (IsValidLuhn(digits)) {
-            matches.push_back(candidate);
-        }
-    }
-
-    // SSNs: XXX-XX-XXXX
-    static const std::regex ssnRegex(R"(\b\d{3}-\d{2}-\d{4}\b)");
-    for (std::sregex_iterator it(text.begin(), text.end(), ssnRegex), end;
-         it != end; ++it) {
-        matches.push_back(it->str());
-    }
-
-    // API keys: AWS access keys, GitHub personal access tokens, OpenAI keys.
-    static const std::regex apiKeyRegex(
-        R"(\b(AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|sk-[a-zA-Z0-9]{48})\b)");
-    for (std::sregex_iterator it(text.begin(), text.end(), apiKeyRegex), end;
-         it != end; ++it) {
-        matches.push_back(it->str());
-    }
-
-    return matches;
-}
-
-std::string ClassificationService::MaskSensitiveData(const std::string& text) const {
-    std::string masked = text;
-
-    // SSN: 123-45-6789 -> ***-**-6789 (keep only the last four digits)
-    static const std::regex ssnRegex(R"(\b(\d{3})-(\d{2})-(\d{4})\b)");
-    masked = std::regex_replace(masked, ssnRegex, "***-**-$3");
-
-    // Credit cards: keep last four digits only.
-    static const std::regex ccRegex(R"(\b(?:\d[ -]*?){13,16}\b)");
-    std::string result;
-    size_t lastPos = 0;
-    for (std::sregex_iterator it(masked.begin(), masked.end(), ccRegex), end;
-         it != end; ++it) {
-        result.append(masked, lastPos, it->position() - lastPos);
-        std::string card = it->str();
-        std::string digits;
-        for (char c : card) {
-            if (c >= '0' && c <= '9') {
-                digits.push_back(c);
-            }
-        }
-        result += "****";
-        if (digits.size() >= 4) {
-            result += digits.substr(digits.size() - 4);
-        }
-        lastPos = it->position() + card.size();
-    }
-    if (lastPos == 0) {
-        result = masked;
-    } else {
-        result.append(masked, lastPos, std::string::npos);
-    }
-
-    // API keys: keep nothing sensitive, replace with a marker.
-    static const std::regex apiKeyRegex(
-        R"(\b(AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|sk-[a-zA-Z0-9]{48})\b)");
-    result = std::regex_replace(result, apiKeyRegex, "***REDACTED***");
-
-    return result;
-}
 
 std::string ClassificationService::CalculateExposure(const std::wstring& filePath) {
     std::wstring lowerPath = filePath;
@@ -822,16 +648,25 @@ void ClassificationService::RunDeepContentInspection(
     // Owner SID for the file (best-effort; empty string on failure).
     result.ownerSid = GetFileOwnerSid(filePath);
 
-    // Extract text only for supported plain-text extensions. Unsupported or
-    // binary files return an empty string and are skipped cheaply.
-    std::string text = ExtractTextFromFile(filePath);
+    // Deep content inspection: detect type by signature, extract text from
+    // plain text and OOXML containers, and apply all DCI safety limits.
+    ExtractionResult extraction = m_dciInspector.ExtractDocument(filePath);
+    result.dciWarnings = extraction.warnings;
+    if (extraction.errorCategory != DciError::kNone) {
+        result.dciWarnings.push_back("error_category:" + std::string(extraction.errorCategory));
+    }
+    if (extraction.truncationStatus) {
+        result.dciWarnings.push_back("extracted_text_truncated");
+    }
+
+    const std::string text = extraction.extractedText;
     if (text.empty()) {
         result.riskScore = CalculateRiskScore(false, exposure);
         result.contentSnippet = "";
         return;
     }
 
-    std::vector<std::string> piiMatches = ScanTextForPII(text);
+    std::vector<std::string> piiMatches = DeepContentInspector::ScanTextForPII(text);
     if (piiMatches.empty()) {
         result.riskScore = CalculateRiskScore(false, exposure);
         result.contentSnippet = "";
@@ -847,12 +682,15 @@ void ClassificationService::RunDeepContentInspection(
     result.riskScore = CalculateRiskScore(true, exposure);
 
     // Build the content snippet: mask all PII, then cap at 50 characters.
-    std::string masked = MaskSensitiveData(text);
+    // The snippet is masked and truncated; it is never raw document content.
+    std::string masked = DeepContentInspector::MaskSensitiveData(text);
     result.contentSnippet = masked.substr(0, kDciSnippetMaxChars);
 
-    LOG_INFO("DCI: PII detected in %ws (%zu findings), risk=%d, exposure=%s, snippet='%s'",
+    // Never log extracted text, PII candidates, document contents or secrets -
+    // only counts and categories.
+    LOG_INFO("DCI: PII detected in %ws (%zu findings), risk=%d, exposure=%s, type=%s",
         filePath.c_str(), piiMatches.size(), result.riskScore,
-        exposure.c_str(), result.contentSnippet.c_str());
+        exposure.c_str(), extraction.fileType.c_str());
 }
 
 std::string ClassificationService::ReadFileContent(const std::wstring& filePath, size_t maxBytes) {

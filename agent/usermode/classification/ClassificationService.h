@@ -23,6 +23,7 @@
 
 #include "../../common/shared/dlp_shared.h"
 #include "../comms/KernelComm.h"
+#include "DeepContentInspector.h"
 
 namespace Pritrak {
 namespace DLP {
@@ -46,6 +47,7 @@ struct ClassificationResult {
     int riskScore;                  // 0-100 contextual risk score
     std::string contentSnippet;     // Masked, truncated content snippet (never raw PII)
     std::string ownerSid;           // File owner SID (S-1-...-...)
+    std::vector<std::string> dciWarnings;  // DCI diagnostics (fixed, non-sensitive strings)
 };
 
 /**
@@ -219,11 +221,7 @@ private:
     bool PushPolicyToKernel(const ClassificationResult& result);
 
     // Phase 2 DSPM Deep Content Inspection (DCI)
-    std::string ExtractTextFromFile(const std::wstring& filePath);
-    std::vector<std::string> ScanTextForPII(const std::string& text);
     std::string CalculateExposure(const std::wstring& filePath);
-    bool IsValidLuhn(const std::string& digits) const;
-    std::string MaskSensitiveData(const std::string& text) const;
     std::string GetFileOwnerSid(const std::wstring& filePath) const;
     int CalculateRiskScore(bool hasPII, const std::string& exposure) const;
     void RunDeepContentInspection(const std::wstring& filePath, ClassificationResult& result);
@@ -251,6 +249,9 @@ private:
 
     // Kernel communication
     KernelComm* m_kernelComm;
+
+    // Deep Content Inspector (detection + extraction + RE2 PII scanning).
+    DeepContentInspector m_dciInspector;
 };
 
 /**

@@ -5,7 +5,7 @@ export default function ThreatDetection() {
     <div className="p-6 bg-white min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-3 mb-2">
-          <Activity className="w-6 h-6 text-[#fd382f]" />
+          <Activity className="w-6 h-6 text-brand" />
           Threat Detection
         </h1>
         <p className="text-gray-600">Monitor and analyze security threats in real-time</p>

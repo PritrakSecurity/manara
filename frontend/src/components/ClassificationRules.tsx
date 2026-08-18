@@ -98,7 +98,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Payroll Files Classification"
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
             />
           </div>
 
@@ -111,7 +111,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Explain what this rule does..."
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
               rows={2}
             />
           </div>
@@ -127,7 +127,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
               onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 100 })}
               min="0"
               max="1000"
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
             />
             <p className="text-xs text-gray-500 mt-1">Recommended: 0-99 (system), 100-500 (user high), 500-1000 (user low)</p>
           </div>
@@ -156,7 +156,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
                 <select
                   value={formData.condition_field}
                   onChange={(e) => setFormData({ ...formData, condition_field: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f]"
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand"
                 >
                   {conditionFields.map((field) => (
                     <option key={field.value} value={field.value}>
@@ -172,7 +172,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
                 <select
                   value={formData.condition_operator}
                   onChange={(e) => setFormData({ ...formData, condition_operator: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f]"
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand"
                 >
                   {(operators[formData.condition_field] || []).map((op) => (
                     <option key={op} value={op}>
@@ -196,7 +196,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
                       ? 'e.g., .xlsx, .sql'
                       : 'e.g., payroll'
                   }
-                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f]"
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
             </div>
@@ -268,7 +268,7 @@ function AddRuleModal({ isOpen, onClose, onSave, editingRule }: AddRuleModalProp
               setFormError('');
               await onSave(formData);
             }}
-            className="px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors flex items-center gap-2"
           >
             <Check className="w-4 h-4" />
             Save Rule
@@ -362,7 +362,7 @@ export function ClassificationRules() {
         </div>
         <button
           onClick={handleAddRule}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Rule
@@ -388,7 +388,7 @@ export function ClassificationRules() {
           <p className="text-gray-500 mb-4">No classification rules yet. Create one to automate file classification!</p>
           <button
             onClick={handleAddRule}
-            className="px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors"
+            className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors"
           >
             Create Your First Rule
           </button>
@@ -438,7 +438,7 @@ export function ClassificationRules() {
                   <div className="flex gap-2 ml-4">
                     <button
                       onClick={() => handleEditRule(rule)}
-                      className="p-2 text-gray-600 hover:text-[#fd382f] hover:bg-red-50 rounded transition-colors"
+                      className="p-2 text-gray-600 hover:text-brand hover:bg-red-50 rounded transition-colors"
                       title="Edit rule"
                     >
                       <Edit2 className="w-4 h-4" />

@@ -48,7 +48,7 @@ export const routeTiers: Record<string, Tier> = {
 
   // Coverage & Integrations
   '/coverage/endpoints': 'community',
-  '/coverage/cloud-saas': 'starter',
+  '/coverage/cloud-saas': 'community',
   '/coverage/network-email': 'enterprise',
   '/coverage/identity-sync': 'starter',
   '/coverage/siem-soar-exports': 'starter',

@@ -24,6 +24,7 @@ import (
 	"manara-dlp/internal/config"
 	"manara-dlp/internal/db"
 	"manara-dlp/internal/endpoints"
+	"manara-dlp/internal/license"
 	"manara-dlp/internal/policy"
 	"manara-dlp/internal/telemetry"
 	"manara-dlp/internal/alerts"
@@ -82,6 +83,16 @@ func main() {
 
 	// WebSocket origin allowlist
 	websocket.AllowedOrigins = cfg.AllowedWSOrigins
+
+	// Build the license feature gate from server configuration. Cloud DSPM is
+	// enabled by listing it in LICENSE_FEATURES (e.g. LICENSE_FEATURES=cloud-dspm).
+	licSvc := license.NewService(cfg.EnabledFeatures)
+	log.Printf("Enabled license features: %v", licSvc.FeatureNames())
+
+	// Allow local AWS profile authentication for Cloud DSPM only when the server
+	// operator explicitly opts in (local development/tests). Clients can never
+	// enable this themselves.
+	api.AllowAWSProfile = cfg.AllowAWSProfile
 
 	// Determine the database connection string: the -db flag overrides the
 	// DATABASE_URL environment variable. A database is REQUIRED — the server
@@ -179,7 +190,7 @@ func main() {
 	// Initialize the websocket hub exactly once (package-level singleton) and
 	// the HTTP REST API router exactly once. There is no duplicate port-8080
 	// listener: a single HTTP server is bound on the configured http-port.
-	router := api.NewRouter(policyService, telemetryService, endpointService, alertService, database, serverStartTime)
+	router := api.NewRouter(policyService, telemetryService, endpointService, alertService, database, serverStartTime, licSvc)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%d", *httpPort),

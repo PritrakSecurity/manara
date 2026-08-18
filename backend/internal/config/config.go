@@ -24,6 +24,8 @@ type Config struct {
 	AllowedOrigins   []string
 	AdminEmail       string
 	AdminPassword    string
+	EnabledFeatures  []string
+	AllowAWSProfile  bool
 }
 
 // LoadFromEnv loads configuration from environment variables.
@@ -67,6 +69,8 @@ func LoadFromEnv() (*Config, error) {
 		AllowedOrigins:   allowedOrigins,
 		AdminEmail:       os.Getenv("ADMIN_EMAIL"),
 		AdminPassword:    os.Getenv("ADMIN_PASSWORD"),
+		EnabledFeatures:  parseCSV(os.Getenv("LICENSE_FEATURES"), nil),
+		AllowAWSProfile:  strings.EqualFold(os.Getenv("ALLOW_AWS_PROFILE"), "true"),
 	}
 	return cfg, nil
 }

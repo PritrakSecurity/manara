@@ -1,10 +1,14 @@
-import { Bell, Settings, LogOut } from 'lucide-react';
+import { Bell, Settings, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import PritrakLogo from '../../assets/pritrak-dashboard-logo.png';
 import { useAuthStore } from '../../store/authStore';
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -24,20 +28,26 @@ export default function Header() {
   ];
 
   return (
-    <header className="app-header">
-      <div className="header-left">
-        <img 
-          src={PritrakLogo} 
-          alt="Pritrak" 
-          className="header-logo-large" 
-          style={{ height: '80px', width: 'auto' }}
+    <header className="bg-brand h-[80px] w-full flex items-center justify-between px-6 shadow-md relative z-50">
+      <div className="flex items-center">
+        <img
+          src={PritrakLogo}
+          alt="Pritrak"
+          className="h-[80px] w-auto object-contain mr-4"
         />
       </div>
-      
-      <div className="header-right">
+
+      <div className="flex gap-3 items-center">
+        <button
+          className="w-10 h-10 border-none bg-transparent text-white rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-white/15 lg:hidden"
+          onClick={onMenuClick}
+          aria-label="Open menu"
+        >
+          <Menu size={20} className="text-white" />
+        </button>
         <div className="relative">
-          <button 
-            className="icon-btn relative"
+          <button
+            className="w-10 h-10 border-none bg-transparent text-white rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-white/15 relative"
             onClick={() => setShowNotifications(!showNotifications)}
           >
             <Bell size={20} className="text-white" />
@@ -46,22 +56,22 @@ export default function Header() {
             )}
           </button>
           {showNotifications && (
-            <div className="notification-dropdown">
-              <div className="notification-header">
+            <div className="absolute top-[calc(100%+8px)] right-0 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
                 <span className="font-semibold text-gray-800">Notifications</span>
-                <button 
+                <button
                   onClick={() => setShowNotifications(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   ×
                 </button>
               </div>
-              <div className="notification-list">
+              <div className="max-h-[400px] overflow-y-auto">
                 {notifications.map((notif) => (
-                  <div key={notif.id} className="notification-item">
-                    <div className="notification-content">
-                      <p className="notification-message">{notif.message}</p>
-                      <span className="notification-time">{notif.time}</span>
+                  <div key={notif.id} className="px-4 py-3 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm text-gray-800">{notif.message}</p>
+                      <span className="text-xs text-gray-500">{notif.time}</span>
                     </div>
                   </div>
                 ))}
@@ -69,142 +79,20 @@ export default function Header() {
             </div>
           )}
         </div>
-        <button 
-          className="icon-btn"
-          onClick={() => navigate('/dashboard/settings')}
+        <button
+          className="w-10 h-10 border-none bg-transparent text-white rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-white/15"
+          onClick={() => navigate('/administration/workspace')}
         >
           <Settings size={20} className="text-white" />
         </button>
-        <button 
-          className="logout-btn"
+        <button
+          className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/30 rounded-md text-white text-sm cursor-pointer transition-all hover:bg-white/20"
           onClick={handleLogout}
         >
-          <LogOut className="icon text-white" size={20} />
+          <LogOut className="text-white" size={20} />
           <span>Logout</span>
         </button>
       </div>
-
-      <style>{`
-        .app-header {
-          height: 80px;
-          background: #fd382f;
-          border-bottom: none;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0 24px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-          position: relative;
-          z-index: 100;
-        }
-
-        .header-logo-large {
-          height: 80px !important;
-          width: auto;
-          object-fit: contain;
-          margin-right: 16px;
-        }
-
-        .header-right {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-
-        .icon-btn {
-          width: 40px;
-          height: 40px;
-          border: none;
-          background: transparent;
-          color: white;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: background 0.2s;
-          position: relative;
-        }
-
-        .icon-btn:hover {
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        .notification-dropdown {
-          position: absolute;
-          top: calc(100% + 8px);
-          right: 0;
-          width: 320px;
-          background: white;
-          border: 1px solid #e1e4e8;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          z-index: 1000;
-        }
-
-        .notification-header {
-          padding: 12px 16px;
-          border-bottom: 1px solid #e1e4e8;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .notification-list {
-          max-height: 400px;
-          overflow-y: auto;
-        }
-
-        .notification-item {
-          padding: 12px 16px;
-          border-bottom: 1px solid #f1f3f5;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-
-        .notification-item:hover {
-          background: #f8f9fa;
-        }
-
-        .notification-content {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .notification-message {
-          font-size: 14px;
-          color: #2c3e50;
-        }
-
-        .notification-time {
-          font-size: 12px;
-          color: #7f8c8d;
-        }
-
-        .logout-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 6px;
-          color: white;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .logout-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-          border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .logout-btn .icon {
-          color: white;
-        }
-      `}</style>
     </header>
   );
 }

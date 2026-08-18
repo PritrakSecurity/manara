@@ -592,14 +592,14 @@ export function EndpointsPage() {
         }
 
         .page-icon {
-          color: #fd382f;
+          color: var(--color-brand-primary);
         }
 
         .page-header h1 {
           margin: 0;
           font-size: 28px;
           font-weight: 700;
-          color: #1e293b;
+          color: var(--text-primary);
         }
 
         .page-subtitle {
@@ -647,7 +647,7 @@ export function EndpointsPage() {
         .stat-value {
           font-size: 32px;
           font-weight: 700;
-          color: #1e293b;
+          color: var(--text-primary);
           line-height: 1;
         }
 
@@ -772,8 +772,8 @@ export function EndpointsPage() {
         }
 
         .page-number.active {
-          border-color: #fd382f;
-          color: #fd382f;
+          border-color: var(--color-brand-primary);
+          color: var(--color-brand-primary);
           font-weight: 700;
         }
 
@@ -783,7 +783,7 @@ export function EndpointsPage() {
         }
 
         .devices-table thead {
-          background: #f8fafc;
+          background: var(--bg-page-surface);
           border-bottom: 2px solid #e2e8f0;
         }
 
@@ -805,7 +805,7 @@ export function EndpointsPage() {
         }
 
         .devices-table tr:hover {
-          background: #f8fafc;
+          background: var(--bg-page-surface);
         }
 
         .status-badge {
@@ -936,7 +936,7 @@ export function EndpointsPage() {
         .empty-state h3 {
           margin: 16px 0 8px;
           font-size: 20px;
-          color: #1e293b;
+          color: var(--text-primary);
         }
 
         .empty-state p {
@@ -959,7 +959,7 @@ export function EndpointsPage() {
           align-items: center;
           gap: 8px;
           padding: 10px 20px;
-          background: #fd382f;
+          background: var(--color-brand-primary);
           color: white;
           border: none;
           border-radius: 8px;
@@ -970,7 +970,7 @@ export function EndpointsPage() {
         }
 
         .btn-primary:hover {
-          background: #e02f26;
+          background: var(--color-brand-hover);
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(253, 56, 47, 0.3);
         }
@@ -991,7 +991,7 @@ export function EndpointsPage() {
         }
 
         .btn-secondary:hover {
-          background: #f8fafc;
+          background: var(--bg-page-surface);
           border-color: #cbd5e1;
         }
 

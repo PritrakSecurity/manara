@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Gauge, FileWarning, Database, Lock, RefreshCw } from 'lucide-react';
+import { Gauge, FileWarning, Database, Lock, RefreshCw, PieChart as PieIcon } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { apiClient } from '../api/client';
+import { mockRiskiestAssets } from '../__mocks__';
 
 const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7'];
 
@@ -36,13 +37,7 @@ export default function PostureRiskScorecard() {
     { name: 'PII', value: pii },
   ].filter((d) => d.value > 0);
 
-  const riskiestAssets = [
-    'C:\\finance\\salary-master.xlsx',
-    'C:\\hr\\employee-ssn.csv',
-    'C:\\legal\\nda-drafts.pdf',
-    'C:\\executive\\board-minutes.docx',
-    'C:\\db\\production-credentials.sql',
-  ];
+  const riskiestAssets = mockRiskiestAssets;
 
   const gaugeColor = riskScore >= 70 ? '#ef4444' : riskScore >= 40 ? '#f59e0b' : '#10b981';
 
@@ -55,7 +50,7 @@ export default function PostureRiskScorecard() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           <RefreshCw size={16} />
           Refresh
@@ -64,9 +59,9 @@ export default function PostureRiskScorecard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Risk score */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col items-center justify-center">
-          <div className="w-14 h-14 rounded-full bg-[#fd382f]/10 flex items-center justify-center mb-4">
-            <Gauge className="h-7 w-7 text-[#fd382f]" />
+        <div className="manara-card flex flex-col items-center justify-center">
+          <div className="w-14 h-14 rounded-full bg-brand/10 flex items-center justify-center mb-4">
+            <Gauge className="h-7 w-7 text-brand" />
           </div>
           <div className="text-5xl font-bold" style={{ color: gaugeColor }}>{riskScore}</div>
           <div className="text-sm text-gray-500 mt-1">Risk Score / 100</div>
@@ -76,10 +71,13 @@ export default function PostureRiskScorecard() {
         </div>
 
         {/* Distribution */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 col-span-2">
+        <div className="manara-card col-span-2">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Distribution</h2>
           {pieData.length === 0 ? (
-            <div className="h-56 flex items-center justify-center text-gray-400">No classification data yet</div>
+            <div className="h-56 flex flex-col items-center justify-center text-gray-400">
+              <PieIcon className="h-8 w-8 text-gray-300 mb-2" />
+              No classification data yet
+            </div>
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -101,21 +99,25 @@ export default function PostureRiskScorecard() {
       {/* Riskiest assets */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <FileWarning className="h-5 w-5 text-[#fd382f]" />
+          <FileWarning className="h-5 w-5 text-brand" />
           <h2 className="text-lg font-semibold text-gray-900">Top Riskiest Assets</h2>
         </div>
         <ul className="divide-y divide-gray-200">
-          {riskiestAssets.map((asset, i) => (
-            <li key={asset} className="px-6 py-3 flex items-center gap-3">
-              <span className="text-sm font-semibold text-gray-400 w-6">{i + 1}</span>
-              {asset.includes('sql') || asset.includes('credentials') ? (
-                <Database className="h-4 w-4 text-red-500 flex-shrink-0" />
-              ) : (
-                <Lock className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-              )}
-              <span className="text-sm text-gray-900 break-all">{asset}</span>
-            </li>
-          ))}
+          {riskiestAssets.length === 0 ? (
+            <li className="px-6 py-8 text-center text-gray-400">No riskiest asset data available.</li>
+          ) : (
+            riskiestAssets.map((asset, i) => (
+              <li key={asset} className="px-6 py-3 flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-400 w-6">{i + 1}</span>
+                {asset.includes('sql') || asset.includes('credentials') ? (
+                  <Database className="h-4 w-4 text-red-500 flex-shrink-0" />
+                ) : (
+                  <Lock className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                )}
+                <span className="text-sm text-gray-900 break-all">{asset}</span>
+              </li>
+            ))
+          )}
         </ul>
       </div>
     </div>

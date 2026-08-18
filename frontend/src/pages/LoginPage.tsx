@@ -49,7 +49,7 @@ export default function LoginPage() {
           refreshToken: response.data.refreshToken || null,
         });
         localStorage.setItem('auth_token', response.data.token);
-        setTimeout(() => navigate('/dashboard'), 100);
+        setTimeout(() => navigate('/command-center/executive-overview'), 100);
       } else {
         setError('Invalid response from server');
       }
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Internal or domain user"
                 disabled={loading}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-brand focus:border-brand transition"
                 required
               />
             </div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 disabled={loading}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f] transition"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-brand focus:border-brand transition"
                 required
               />
             </div>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 disabled={loading}
-                className="w-4 h-4 text-[#fd382f] border-gray-300 rounded focus:ring-[#fd382f] focus:ring-2"
+                className="w-4 h-4 text-brand border-gray-300 rounded focus:ring-brand focus:ring-2"
               />
               <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700 cursor-pointer">
                 Remember me
@@ -144,7 +144,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-[#fd382f] hover:bg-[#e02f26] text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-brand hover:bg-brand-hover text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -155,14 +155,14 @@ export default function LoginPage() {
         <div className="mt-6 text-center space-x-4">
           <a
             href="#"
-            className="text-[#fd382f] hover:underline text-sm font-medium"
+            className="text-brand hover:underline text-sm font-medium"
           >
             Privacy Policy
           </a>
           <span className="text-gray-400">|</span>
           <a
             href="#"
-            className="text-[#fd382f] hover:underline text-sm font-medium"
+            className="text-brand hover:underline text-sm font-medium"
           >
             Data Protection Policy
           </a>

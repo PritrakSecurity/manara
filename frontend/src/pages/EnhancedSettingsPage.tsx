@@ -1000,7 +1000,7 @@ export default function EnhancedSettingsPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
-          <Settings className="w-8 h-8 text-[#fd382f]" />
+          <Settings className="w-8 h-8 text-brand" />
           Settings
         </h1>
         <p className="text-gray-600 mt-1">Configure system settings and integrations</p>
@@ -1014,7 +1014,7 @@ export default function EnhancedSettingsPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-[#fd382f] text-white'
+                ? 'bg-brand text-white'
                 : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
             }`}
           >

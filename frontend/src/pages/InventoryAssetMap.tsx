@@ -204,7 +204,7 @@ export default function InventoryAssetMap() {
         </div>
         <button
           onClick={() => { loadStats(); loadAssets(); }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           <RefreshCw size={16} />
           Refresh
@@ -222,7 +222,7 @@ export default function InventoryAssetMap() {
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 relative overflow-hidden"
+            className="manara-card relative overflow-hidden"
           >
             <div className={`absolute top-0 left-0 h-1 w-full ${card.bg}`} />
             <div className="flex items-start justify-between">
@@ -238,7 +238,7 @@ export default function InventoryAssetMap() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
+      <div className="manara-card p-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -246,13 +246,13 @@ export default function InventoryAssetMap() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by file path..."
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f] focus:border-[#fd382f]"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
             />
           </div>
           <select
             value={classification}
             onChange={(e) => setClassification(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#fd382f]"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">All Classifications</option>
             {classificationOptions.map((c) => (

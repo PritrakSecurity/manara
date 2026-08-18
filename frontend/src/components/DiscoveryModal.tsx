@@ -186,14 +186,14 @@ export default function DiscoveryModal({
 
         {!isScanning && foundDevices.length === 0 ? (
           <div className="py-12 text-center">
-            <Search className="w-16 h-16 text-[#fd382f] mx-auto mb-4" />
-            <p className="text-[#7f8c8d] mb-6">
+            <Search className="w-16 h-16 text-brand mx-auto mb-4" />
+            <p className="text-gray-500 mb-6">
               Click below to scan your network for eligible Windows devices
             </p>
             <button
               onClick={startDiscovery}
               disabled={isScanning}
-              className="px-6 py-3 bg-[#fd382f] text-white font-semibold rounded-lg hover:bg-[#e02f26] disabled:opacity-50 transition"
+              className="px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-hover disabled:opacity-50 transition"
             >
               Start Discovery Scan
             </button>
@@ -202,54 +202,54 @@ export default function DiscoveryModal({
           <>
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[#2c3e50] font-medium">Searching eligible devices</p>
-                <span className="text-[#fd382f] font-bold">{progress}%</span>
+                <p className="text-gray-800 font-medium">Searching eligible devices</p>
+                <span className="text-brand font-bold">{progress}%</span>
               </div>
-              <div className="w-full h-3 bg-[#f1f3f5] rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#fd382f] transition-all duration-300 rounded-full"
+                  className="h-full bg-brand transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <p className="text-[#7f8c8d] text-sm mt-2">{message}</p>
+              <p className="text-gray-500 text-sm mt-2">{message}</p>
               {errorMsg && (
-                <p className="text-[#dc3545] text-sm mt-2 bg-[#fee] p-2 rounded border border-[#fcc]">{errorMsg}</p>
+                <p className="text-red-600 text-sm mt-2 bg-red-50 p-2 rounded border border-red-200">{errorMsg}</p>
               )}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-[#f8f9fa] border border-[#e1e4e8] rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-[#fd382f]">{totalScanned}</div>
-                <div className="text-xs text-[#7f8c8d] mt-1">Hosts Scanned</div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-brand">{totalScanned}</div>
+                <div className="text-xs text-gray-500 mt-1">Hosts Scanned</div>
               </div>
-              <div className="bg-[#f8f9fa] border border-[#e1e4e8] rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-[#28a745]">{totalEligible}</div>
-                <div className="text-xs text-[#7f8c8d] mt-1">Eligible Found</div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">{totalEligible}</div>
+                <div className="text-xs text-gray-500 mt-1">Eligible Found</div>
               </div>
-              <div className="bg-[#f8f9fa] border border-[#e1e4e8] rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-[#17a2b8]">{scanDuration}s</div>
-                <div className="text-xs text-[#7f8c8d] mt-1">Scan Duration</div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-cyan-600">{scanDuration}s</div>
+                <div className="text-xs text-gray-500 mt-1">Scan Duration</div>
               </div>
             </div>
 
             {/* LIVE RESULTS - Show devices as they're found */}
             {foundDevices.length > 0 && (
-              <div className="bg-[#f8f9fa] border-2 border-[#e1e4e8] rounded-lg p-4">
-                <h3 className="text-[#2c3e50] font-semibold mb-3 flex items-center gap-2">
-                  <Search className="w-5 h-5 text-[#fd382f]" />
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                <h3 className="text-gray-800 font-semibold mb-3 flex items-center gap-2">
+                  <Search className="w-5 h-5 text-brand" />
                   Devices Found: {foundDevices.length}
                 </h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {foundDevices.map((device, idx) => (
-                    <div key={device.id || idx} className="bg-white border border-[#e1e4e8] rounded-lg p-3 flex items-center gap-3 animate-in">
-                      <div className="w-10 h-10 bg-[#e0f2fe] rounded-lg flex items-center justify-center">
-                        <Search className="w-5 h-5 text-[#0284c7]" />
+                    <div key={device.id || idx} className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3 animate-in">
+                      <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center">
+                        <Search className="w-5 h-5 text-sky-600" />
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold text-[#1e293b]">{device.hostname || 'Unknown'}</div>
-                        <div className="text-sm text-[#64748b] font-mono">{device.ipAddress}</div>
+                        <div className="font-semibold text-primary">{device.hostname || 'Unknown'}</div>
+                        <div className="text-sm text-gray-500 font-mono">{device.ipAddress}</div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-[#16a34a]">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
                         <CheckCircle className="w-4 h-4" />
                         <span>{device.status === 'eligible' ? 'Eligible' : 'Online'}</span>
                       </div>
@@ -260,16 +260,16 @@ export default function DiscoveryModal({
             )}
 
             {foundDevices.length === 0 && isScanning && totalScanned > 10 && (
-              <div className="text-center py-8 text-[#64748b]">
+              <div className="text-center py-8 text-gray-500">
                 <p>Scanning... no devices found yet</p>
                 <p className="text-xs mt-2 italic">This is normal if devices are offline or blocking ICMP</p>
               </div>
             )}
 
-            <div className="flex gap-3 pt-6 border-t border-[#e1e4e8]">
+            <div className="flex gap-3 pt-6 border-t border-gray-200">
               <button
                 onClick={isScanning ? stopDiscovery : onClose}
-                className="flex-1 px-4 py-2 bg-[#f8f9fa] text-[#2c3e50] border border-[#e1e4e8] rounded-lg hover:bg-[#f0f0f0] transition font-medium"
+                className="flex-1 px-4 py-2 bg-gray-50 text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-100 transition font-medium"
               >
                 {isScanning ? 'Stop Scan' : 'Close'}
               </button>
@@ -279,7 +279,7 @@ export default function DiscoveryModal({
                     onDiscoveryComplete(foundDevices);
                     onClose();
                   }}
-                  className="flex-1 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition font-medium"
+                  className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition font-medium"
                 >
                   Import {totalEligible} Device{totalEligible !== 1 ? 's' : ''}
                 </button>

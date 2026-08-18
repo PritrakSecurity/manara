@@ -12,8 +12,8 @@ export default function ComingSoonPage({ title, description }: ComingSoonPagePro
   return (
     <div className="flex items-center justify-center min-h-full p-8 bg-gray-50">
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm max-w-md w-full p-10 text-center">
-        <div className="w-20 h-20 rounded-full bg-[#fd382f]/10 flex items-center justify-center mx-auto mb-6">
-          <Rocket className="h-9 w-9 text-[#fd382f]" />
+        <div className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-6">
+          <Rocket className="h-9 w-9 text-brand" />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-3">{title}</h1>
         <p className="text-gray-600 leading-relaxed mb-8">
@@ -22,7 +22,7 @@ export default function ComingSoonPage({ title, description }: ComingSoonPagePro
         </p>
         <button
           onClick={() => navigate('/command-center/executive-overview')}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#fd382f] hover:bg-[#e02f26] text-white rounded-lg font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-lg font-medium transition-colors"
         >
           Back to Command Center
         </button>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Crown, Monitor, Database, AlertTriangle, Sparkles } from 'lucide-react';
 import { apiClient } from '../api/client';
-import { useUIStore } from '../stores/uiStore';
+import { useUIStore } from '../store/uiStore';
 
 export default function LicenseUsage() {
   const [deviceCount, setDeviceCount] = useState(0);
@@ -31,7 +31,7 @@ export default function LicenseUsage() {
   const assetsPct = Math.min(100, Math.round((assetCount / assetLimit) * 100));
   const limitReached = deviceCount >= endpointLimit || assetCount >= assetLimit;
 
-  const barColor = (pct: number) => (pct >= 100 ? 'bg-[#fd382f]' : pct >= 75 ? 'bg-yellow-500' : 'bg-green-500');
+  const barColor = (pct: number) => (pct >= 100 ? 'bg-brand' : pct >= 75 ? 'bg-yellow-500' : 'bg-green-500');
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -41,8 +41,8 @@ export default function LicenseUsage() {
       </div>
 
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-full bg-[#fd382f]/10 flex items-center justify-center">
-          <Crown className="h-6 w-6 text-[#fd382f]" />
+        <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center">
+          <Crown className="h-6 w-6 text-brand" />
         </div>
         <div>
           <span className="inline-block px-3 py-1 bg-gray-900 text-white rounded-full text-sm font-semibold">
@@ -64,7 +64,7 @@ export default function LicenseUsage() {
               onClick={() =>
                 openUpgradeModal('Starter Plan', 'starter', 'Expand your coverage with the Pritrak DLP Starter plan.')
               }
-              className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+              className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
             >
               <Sparkles size={16} />
               Start Free Trial

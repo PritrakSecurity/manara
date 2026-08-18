@@ -1,5 +1,5 @@
 import { ShieldCheck, Lock, Eye, FileCheck2, ScrollText } from 'lucide-react';
-import { useUIStore } from '../stores/uiStore';
+import { useUIStore } from '../store/uiStore';
 
 interface Framework {
   name: string;
@@ -70,7 +70,7 @@ export default function FrameworkMapping() {
                   `${f.name} control mapping is an Enterprise feature in the Pritrak DLP platform.`
                 )
               }
-              className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
             >
               <Lock size={16} />
               View Controls

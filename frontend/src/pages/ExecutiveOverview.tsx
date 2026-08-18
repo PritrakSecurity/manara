@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Monitor, Wifi, FileWarning, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Monitor, Wifi, FileWarning, ShieldAlert, RefreshCw, BarChart3, Inbox } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { apiClient } from '../api/client';
 
@@ -34,7 +34,10 @@ export default function ExecutiveOverview() {
         apiClient.get('/api/v1/dspm/stats'),
         apiClient.get('/api/v1/incidents'),
       ]);
-      setDevices(Array.isArray(devicesRes.data) ? devicesRes.data : []);
+      // The backend returns a bare array; some endpoints wrap it as {devices:[...]}.
+      setDevices(
+        Array.isArray(devicesRes.data) ? devicesRes.data : (devicesRes.data?.devices || [])
+      );
       setStats(statsRes.data || {});
       setIncidents(incidentsRes.data?.incidents || []);
     } catch {
@@ -60,6 +63,10 @@ export default function ExecutiveOverview() {
 
   const classificationData = Object.entries(stats)
     .filter(([k]) => k !== 'TOTAL')
+    // Only numeric counts are plottable. Skip nested objects (e.g.
+    // risk_distribution: {critical, high, low, medium}) which Recharts cannot
+    // render as a bar value and would otherwise crash the Tooltip.
+    .filter(([, value]) => typeof value === 'number')
     .map(([name, value]) => ({ name, count: value }));
 
   const recentIncidents = [...incidents]
@@ -75,7 +82,7 @@ export default function ExecutiveOverview() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           <RefreshCw size={16} />
           Refresh
@@ -85,7 +92,7 @@ export default function ExecutiveOverview() {
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {cards.map((card) => (
-          <div key={card.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <div key={card.label} className="manara-card">
             <div className={`w-11 h-11 rounded-lg ${card.bg} flex items-center justify-center mb-3`}>
               <card.icon className={`h-5 w-5 ${card.color}`} />
             </div>
@@ -96,12 +103,15 @@ export default function ExecutiveOverview() {
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+      <div className="manara-card p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Sensitive Files by Classification</h2>
         {loading ? (
           <div className="h-64 flex items-center justify-center text-gray-500">Loading...</div>
         ) : classificationData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-gray-400">No classification data yet</div>
+          <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+            <BarChart3 className="h-8 w-8 text-gray-300 mb-2" />
+            No classification data yet
+          </div>
         ) : (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -110,7 +120,7 @@ export default function ExecutiveOverview() {
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <Tooltip cursor={{ fill: '#f9fafb' }} />
-                <Bar dataKey="count" name="Assets" fill="#fd382f" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="Assets" fill="var(--color-brand-primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -124,7 +134,10 @@ export default function ExecutiveOverview() {
         </div>
         <div className="overflow-x-auto">
           {recentIncidents.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">No incidents recorded</div>
+            <div className="p-8 text-center text-gray-400 flex flex-col items-center">
+              <Inbox className="h-8 w-8 text-gray-300 mb-2" />
+              No incidents recorded
+            </div>
           ) : (
             <table className="w-full">
               <thead className="bg-gray-50 border-b">

@@ -9,6 +9,13 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
+const sizeClasses: Record<string, string> = {
+  sm: 'max-w-[400px]',
+  md: 'max-w-[600px]',
+  lg: 'max-w-[800px]',
+  xl: 'max-w-[1200px]',
+};
+
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -27,106 +34,36 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`modal-content modal-${size}`} onClick={(e) => e.stopPropagation()}>
-        {title && (
-          <div className="modal-header">
-            <h2>{title}</h2>
-            <button className="close-btn" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center p-4 animate-[manaraFadeIn_0.2s]"
+      onClick={onClose}
+    >
+      <div
+        className={`manara-card w-full ${sizeClasses[size]} max-h-[calc(90vh-100px)] overflow-y-auto relative animate-[manaraSlideUp_0.2s]`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {title ? (
+          <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-primary">{title}</h2>
+            <button
+              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 transition-colors"
+              onClick={onClose}
+              aria-label="Close"
+            >
               <X size={20} />
             </button>
           </div>
-        )}
-        {!title && (
-          <button className="close-btn-absolute" onClick={onClose}>
+        ) : (
+          <button
+            className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 transition-colors"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <X size={20} />
           </button>
         )}
-        <div className="modal-body">{children}</div>
+        {children}
       </div>
-
-      <style>{`
-        .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          animation: fadeIn 0.2s;
-        }
-
-        .modal-content {
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-          position: relative;
-          animation: slideUp 0.2s;
-        }
-
-        .modal-sm { max-width: 400px; width: 90%; }
-        .modal-md { max-width: 600px; width: 90%; }
-        .modal-lg { max-width: 800px; width: 90%; }
-        .modal-xl { max-width: 1200px; width: 90%; }
-
-        .modal-header {
-          padding: 20px 24px;
-          border-bottom: 1px solid #e1e4e8;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .modal-header h2 {
-          font-size: 18px;
-          font-weight: 600;
-          color: #2c3e50;
-          margin: 0;
-        }
-
-        .close-btn, .close-btn-absolute {
-          width: 32px;
-          height: 32px;
-          border: none;
-          background: transparent;
-          color: #7f8c8d;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .close-btn-absolute {
-          position: absolute;
-          top: 16px;
-          right: 16px;
-          z-index: 1;
-        }
-
-        .close-btn:hover, .close-btn-absolute:hover {
-          background: #f0f0f0;
-          color: #2c3e50;
-        }
-
-        .modal-body {
-          padding: 24px;
-          max-height: calc(90vh - 100px);
-          overflow-y: auto;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

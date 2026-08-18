@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand-primary: 253 56 47; /* #fd382f */
+    --color-brand-hover: 220 38 38;
+    --bg-header: 253 56 47;
+    --bg-sidebar: 24 26 27;
+    --bg-page-surface: 249 250 251;
+    --bg-card-surface: 255 255 255;
+    --text-sidebar-idle: 156 163 175;
+    --text-sidebar-active: 255 255 255;
+    --text-primary: 17 24 39;
+    --text-secondary: 107 114 128;
+    --status-critical: 220 38 38;
+    --status-high: 234 88 12;
+    --status-medium: 202 138 4;
+    --status-low: 22 163 74;
+    --class-restricted: 153 27 27;
+    --class-confidential: 220 38 38;
+    --class-internal: 202 138 4;
+    --class-public: 22 163 74;
+  }
+}
+
+@keyframes manaraFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes manaraSlideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@layer components {
+  .manara-page-layout {
+    @apply min-h-screen flex flex-col;
+    background-color: rgb(var(--bg-page-surface));
+    color: rgb(var(--text-primary));
+  }
+
+  .manara-sidebar {
+    @apply w-[260px] flex-shrink-0 min-h-screen border-r border-gray-800 transition-all duration-300;
+    background-color: rgb(var(--bg-sidebar));
+  }
+
+  .manara-header {
+    @apply h-[80px] w-full flex items-center justify-between px-6 shadow-md;
+    background-color: rgb(var(--color-brand-primary));
+  }
+
+  .manara-card {
+    @apply rounded-xl border border-gray-200 shadow-sm p-5;
+    background-color: rgb(var(--bg-card-surface));
+  }
+
+  .manara-nav-item {
+    @apply flex items-center gap-3 px-4 py-2 rounded-lg transition-colors;
+    color: rgb(var(--text-sidebar-idle));
+  }
+
+  .manara-nav-item:hover {
+    background-color: rgba(31, 41, 55, 0.5); /* gray-800/50 */
+  }
+
+  .manara-nav-item-active {
+    @apply border-l-4;
+    color: rgb(var(--text-sidebar-active));
+    background-color: rgba(31, 41, 55, 0.5);
+    border-color: rgb(var(--color-brand-primary));
+  }
+}

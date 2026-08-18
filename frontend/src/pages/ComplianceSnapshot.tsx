@@ -58,7 +58,7 @@ export default function ComplianceSnapshot() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           <RefreshCw size={16} />
           Refresh
@@ -79,7 +79,7 @@ export default function ComplianceSnapshot() {
             </div>
             <Link
               to={f.route}
-              className="mt-6 inline-flex items-center gap-2 px-4 py-2 border border-[#fd382f] text-[#fd382f] rounded-lg hover:bg-[#fd382f]/5 transition-colors font-medium"
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 border border-brand text-brand rounded-lg hover:bg-brand/5 transition-colors font-medium"
             >
               View Framework Mapping
               <ArrowRight size={16} />

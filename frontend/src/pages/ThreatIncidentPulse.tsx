@@ -62,7 +62,7 @@ export default function ThreatIncidentPulse() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-4 py-2 bg-[#fd382f] text-white rounded-lg hover:bg-[#e02f26] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           <RefreshCw size={16} />
           Refresh
@@ -71,7 +71,7 @@ export default function ThreatIncidentPulse() {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <Activity className="h-5 w-5 text-[#fd382f]" />
+          <Activity className="h-5 w-5 text-brand" />
           <h2 className="text-lg font-semibold text-gray-900">Incident Feed</h2>
         </div>
         <div className="overflow-x-auto">

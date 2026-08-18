@@ -20,6 +20,7 @@ import (
 	"manara-dlp/internal/endpoints"
 	"manara-dlp/internal/incidents"
 	"manara-dlp/internal/keywords"
+	"manara-dlp/internal/license"
 	"manara-dlp/internal/ownership"
 	"manara-dlp/internal/policy"
 	"manara-dlp/internal/telemetry"
@@ -124,6 +125,7 @@ func isAdminEndpoint(path string) bool {
 		"/api/v1/roles",       // role management
 		"/api/v1/permissions", // permission management
 		"/api/v1/dspm",        // DSPM inventory
+		"/api/v1/cloud",       // Cloud DSPM scan APIs
 		"/api/v1/event-logs",  // event logs
 		"/api/v1/incidents",   // incidents
 		"/api/v1/ad/",         // AD users
@@ -240,6 +242,7 @@ func NewRouter(
 	alertService *alerts.Service,
 	database *db.Connection,
 	startTime time.Time,
+	licSvc *license.Service,
 ) http.Handler {
 	// Handle nil services (when database is not available)
 	mux := http.NewServeMux()
@@ -1215,6 +1218,13 @@ func NewRouter(
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})).ServeHTTP)
+
+	// Cloud DSPM scan endpoint (licensed feature). The route is registered
+	// behind the licensing middleware, the JWT authentication middleware
+	// (applied to the whole mux below) and CORS.
+	cloudHandler := NewCloudHandler(licSvc)
+	mux.HandleFunc("/api/v1/cloud/aws/s3/scan",
+		corsHandler(license.RequireFeature(licSvc, license.FeatureCloudDSPM, cloudHandler.HandleAWSS3Scan)).ServeHTTP)
 
 	// Approvals endpoints
 	mux.HandleFunc("/api/approvals", corsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
