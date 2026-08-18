@@ -1,12 +1,15 @@
 package classification
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/google/uuid"
 )
 
 // RiskLevel defines the severity of risk
@@ -25,38 +28,65 @@ type Classification string
 const (
 	ClassPublic       Classification = "PUBLIC"
 	ClassInternal     Classification = "INTERNAL"
-	ClassConfidential  Classification = "CONFIDENTIAL"
+	ClassConfidential Classification = "CONFIDENTIAL"
 	ClassRestricted   Classification = "RESTRICTED"
 )
 
 // EngineClassificationResult is the output of the classification engine
 type EngineClassificationResult struct {
-	Classification string `json:"classification"`   // PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED
-	Score          float64 `json:"score"`           // 0-100
-	Confidence     float64 `json:"confidence"`      // 0-100
-	Explanation    string `json:"explanation"`     // Why this classification
-	RiskLevel      string `json:"risk_level"`      // NONE, LOW, MEDIUM_HIGH, CRITICAL
-	ElapsedMs      int    `json:"elapsed_ms"`      // Classification latency
-	RuleTriggered  string `json:"rule_triggered,omitempty"` // Name of rule that triggered, if any
+	Classification string    `json:"classification"`           // PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED
+	Score          float64   `json:"score"`                    // 0-100
+	Confidence     float64   `json:"confidence"`               // 0-100
+	Explanation    string    `json:"explanation"`              // Why this classification
+	RiskLevel      string    `json:"risk_level"`               // NONE, LOW, MEDIUM_HIGH, CRITICAL
+	ElapsedMs      int       `json:"elapsed_ms"`               // Classification latency
+	RuleTriggered  string    `json:"rule_triggered,omitempty"` // Name of rule that triggered, if any
+	Findings       []Finding `json:"findings,omitempty"`       // Structured findings from Phase 2 detections
 }
+
+var (
+	apiKeyRegex       = regexp.MustCompile(`(?i)(?:api_key|apikey|api-key|secret|access_token)[\s:=]+([a-zA-Z0-9_\-]{32,})`)
+	dbConnStringRegex = regexp.MustCompile(`(?i)(?:mysql|postgres|mongodb|sqlserver)://`)
+	jwtRegex          = regexp.MustCompile(`eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+`)
+)
 
 // ClassificationEngine handles file classification
 type ClassificationEngine struct {
-	validators PatternValidators
-	ruleEngine *RuleEngine
+	validators   PatternValidators
+	ruleEngine   *RuleEngine
+	orchestrator *Orchestrator
 }
 
 // NewClassificationEngine creates a new engine
 func NewClassificationEngine() *ClassificationEngine {
+	return NewEngineWithProvider(nil)
+}
+
+// NewEngineWithProvider creates a classification engine wired to the given
+// optional analysis provider. When provider is nil, the NoOpProvider-backed
+// orchestrator is used so behavior stays fully deterministic.
+func NewEngineWithProvider(provider AnalysisProvider) *ClassificationEngine {
+	orchestrator := NewOrchestrator(NoOpProvider{})
+	if provider != nil {
+		orchestrator = NewOrchestrator(provider)
+	}
 	return &ClassificationEngine{
-		validators: NewPatternValidators(),
-		ruleEngine: nil,
+		validators:   NewPatternValidators(),
+		ruleEngine:   nil,
+		orchestrator: orchestrator,
 	}
 }
 
 // SetRuleEngine sets the rule engine for classification
 func (ce *ClassificationEngine) SetRuleEngine(engine *RuleEngine) {
 	ce.ruleEngine = engine
+}
+
+// SetOrchestrator sets the Phase 2.5 analysis orchestrator (optional AI
+// sidecar). It defaults to the NoOpProvider-backed orchestrator, which
+// abstains and keeps behavior fully deterministic.
+func (ce *ClassificationEngine) SetOrchestrator(o *Orchestrator) {
+	ce.orchestrator = o
 }
 
 // Classify classifies a file based on path and content
@@ -101,6 +131,7 @@ func (ce *ClassificationEngine) Classify(filePath string) EngineClassificationRe
 
 	// Phase 2: Content Patterns
 	phase2Score := ce.phase2ContentPatterns(content)
+	findings := ce.collectPhase2Findings(content)
 
 	// Combine scores
 	currentScore := phase1Score + phase2Score
@@ -108,9 +139,11 @@ func (ce *ClassificationEngine) Classify(filePath string) EngineClassificationRe
 	// Phase 2.5: AI Sidecar (optional, if 50 <= score < 90)
 	phase25Adjustment := float64(0)
 	if currentScore >= 50 && currentScore < 90 {
-		// Would call AI service here
-		// For now, skip (no AI service in this scope)
-		_ = phase25Adjustment
+		// Optional AI-provider findings are merged against the deterministic
+		// Phase 2 findings. MergeFindings guarantees hard findings can never
+		// be deleted or downgraded, even if the provider times out or is
+		// unavailable (in which case it returns no findings).
+		findings = MergeFindings(findings, ce.runPhase25(context.Background(), content, findings, filePath).Findings)
 	}
 	currentScore += phase25Adjustment
 
@@ -120,6 +153,7 @@ func (ce *ClassificationEngine) Classify(filePath string) EngineClassificationRe
 
 	// Phase 4: Final Decision
 	result := ce.phase4Decision(currentScore)
+	result.Findings = findings
 
 	// Phase 5: Rule Engine Evaluation (NEW FOR V3.0)
 	if ce.ruleEngine != nil {
@@ -169,6 +203,7 @@ func (ce *ClassificationEngine) ClassifyWithContent(filePath string, content str
 
 	// Phase 2: Content Patterns (using provided content)
 	phase2Score := ce.phase2ContentPatterns(content)
+	findings := ce.collectPhase2Findings(content)
 
 	// Combine scores
 	currentScore := phase1Score + phase2Score
@@ -176,7 +211,7 @@ func (ce *ClassificationEngine) ClassifyWithContent(filePath string, content str
 	// Phase 2.5: AI Sidecar (optional, if 50 <= score < 90)
 	phase25Adjustment := float64(0)
 	if currentScore >= 50 && currentScore < 90 {
-		_ = phase25Adjustment
+		findings = MergeFindings(findings, ce.runPhase25(context.Background(), content, findings, filePath).Findings)
 	}
 	currentScore += phase25Adjustment
 
@@ -186,6 +221,7 @@ func (ce *ClassificationEngine) ClassifyWithContent(filePath string, content str
 
 	// Phase 4: Final Decision
 	result := ce.phase4Decision(currentScore)
+	result.Findings = findings
 
 	// Phase 5: Rule Engine Evaluation (NEW FOR V3.0)
 	if ce.ruleEngine != nil {
@@ -367,16 +403,15 @@ func (ce *ClassificationEngine) phase2Secrets(content string) float64 {
 	}
 
 	// Generic API keys
-	if matched, _ := regexp.MatchString(`(?i)(?:api_key|apikey|api-key|secret|access_token)[\s:=]+([a-zA-Z0-9_\-]{32,})`, content); matched {
-		// Check for negative context
-		if !ce.isInNegativeContext(content) {
+	if idx := apiKeyRegex.FindStringIndex(content); idx != nil {
+		if !ce.isSuppressedByLocalContext(content, idx) {
 			score += 70
 		}
 	}
 
 	// Database connection strings
-	if matched, _ := regexp.MatchString(`(?i)(?:mysql|postgres|mongodb|sqlserver)://`, content); matched {
-		if !ce.isInNegativeContext(content) {
+	if idx := dbConnStringRegex.FindStringIndex(content); idx != nil {
+		if !ce.isSuppressedByLocalContext(content, idx) {
 			score += 80
 		}
 	}
@@ -387,8 +422,8 @@ func (ce *ClassificationEngine) phase2Secrets(content string) float64 {
 	}
 
 	// JWT tokens
-	if matched, _ := regexp.MatchString(`eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+`, content); matched {
-		if !ce.isInNegativeContext(content) {
+	if idx := jwtRegex.FindStringIndex(content); idx != nil {
+		if !ce.isSuppressedByLocalContext(content, idx) {
 			score += 50
 		}
 	}
@@ -405,6 +440,137 @@ func (ce *ClassificationEngine) phase2Secrets(content string) float64 {
 	}
 
 	return score
+}
+
+// collectPhase2Findings builds structured findings from the deterministic
+// Phase 2 detectors. Structurally validated evidence (Luhn-valid credit
+// cards, validated SSNs, NIRs and IBANs) is marked as hard evidence that
+// optional providers can never delete or downgrade. Regex-only detections
+// (API keys, DB connection strings, JWTs) are contextual and non-hard.
+func (ce *ClassificationEngine) collectPhase2Findings(content string) []Finding {
+	var findings []Finding
+
+	for _, m := range ce.validators.FindCreditCardIndexes(content) {
+		findings = append(findings, newFinding("credit_card", "", "luhn_validator", m[0], m[1], true, 1.0, EvidenceHardValidated))
+	}
+	for _, m := range ce.validators.FindSSNIndexes(content) {
+		findings = append(findings, newFinding("ssn", "", "ssn_validator", m[0], m[1], true, 1.0, EvidenceHardValidated))
+	}
+	for _, m := range ce.validators.FindFrenchNIRIndexes(content) {
+		findings = append(findings, newFinding("french_nir", "", "nir_validator", m[0], m[1], true, 1.0, EvidenceHardValidated))
+	}
+	for _, m := range ce.validators.FindIBANIndexes(content) {
+		findings = append(findings, newFinding("iban", "", "iban_validator", m[0], m[1], true, 1.0, EvidenceHardValidated))
+	}
+
+	for _, m := range apiKeyRegex.FindAllStringIndex(content, -1) {
+		if ce.isSuppressedByLocalContext(content, m) {
+			continue
+		}
+		findings = append(findings, newFinding("secret", "api_key", "api_key_regex", m[0], m[1], false, 0.9, EvidenceContextual))
+	}
+	for _, m := range dbConnStringRegex.FindAllStringIndex(content, -1) {
+		if ce.isSuppressedByLocalContext(content, m) {
+			continue
+		}
+		findings = append(findings, newFinding("secret", "db_connection_string", "db_conn_regex", m[0], m[1], false, 0.9, EvidenceContextual))
+	}
+	for _, m := range jwtRegex.FindAllStringIndex(content, -1) {
+		if ce.isSuppressedByLocalContext(content, m) {
+			continue
+		}
+		findings = append(findings, newFinding("secret", "jwt", "jwt_regex", m[0], m[1], false, 0.9, EvidenceContextual))
+	}
+
+	return findings
+}
+
+// phase25ContractVersion is the analysis contract version the engine sends to
+// Phase 2.5 providers.
+const phase25ContractVersion = "1"
+
+// runPhase25 invokes the optional AI-sidecar provider with a privacy-bounded
+// request containing only the ambiguous (non-hard) findings and their
+// match-local context. Hard findings are never sent to the provider. Provider
+// failures (timeout/unavailable) yield an empty response so the deterministic
+// findings are preserved.
+func (ce *ClassificationEngine) runPhase25(ctx context.Context, content string, findings []Finding, filePath string) AnalysisResponse {
+	if ce.orchestrator == nil {
+		return AnalysisResponse{Status: StatusAbstained}
+	}
+
+	ambiguous := make([]Finding, 0, len(findings))
+	for _, f := range findings {
+		if !f.HardEvidence {
+			ambiguous = append(ambiguous, f)
+		}
+	}
+
+	req := AnalysisRequest{
+		ContractVersion:   phase25ContractVersion,
+		RequestID:         uuid.NewString(),
+		AmbiguousFindings: ambiguous,
+		BoundedContext:    buildBoundedContext(content, ambiguous),
+		ContentType:       filepath.Ext(filePath),
+		Deadline:          defaultProviderDeadline,
+	}
+
+	resp, _ := ce.orchestrator.Execute(ctx, req)
+	return resp
+}
+
+// buildBoundedContext concatenates the match-local windows around each
+// ambiguous finding, bounded to a fixed maximum size so no unbounded document
+// content ever reaches a provider.
+func buildBoundedContext(content string, findings []Finding) string {
+	const maxContextBytes = 2000
+
+	var b strings.Builder
+	for _, f := range findings {
+		if f.StartOffset < 0 || f.StartOffset > len(content) || f.EndOffset < f.StartOffset {
+			continue
+		}
+		length := f.EndOffset - f.StartOffset
+		if f.EndOffset > len(content) {
+			length = len(content) - f.StartOffset
+		}
+		local := ExtractMatchLocalContext(content, f.StartOffset, length, 0)
+		if local == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString("\n---\n")
+		}
+		b.WriteString(local)
+		if b.Len() >= maxContextBytes {
+			break
+		}
+	}
+	return b.String()
+}
+
+// isSuppressedByLocalContext reports whether negative-context terms occur
+// within the match-local window around the match at byte range idx. Only the
+// bounded surrounding text is inspected, never the whole document.
+func (ce *ClassificationEngine) isSuppressedByLocalContext(content string, idx []int) bool {
+	local := ExtractMatchLocalContext(content, idx[0], idx[1]-idx[0], 0)
+	return ce.isInNegativeContext(local)
+}
+
+// newFinding builds a Phase 2 deterministic finding.
+func newFinding(fType, category, detector string, start, end int, hard bool, confidence float64, strength EvidenceStrength) Finding {
+	return Finding{
+		Type:             fType,
+		Category:         category,
+		Detector:         detector,
+		SourcePhase:      "phase2",
+		Confidence:       confidence,
+		EvidenceStrength: strength,
+		HardEvidence:     hard,
+		StartOffset:      start,
+		EndOffset:        end,
+		Status:           StatusClassified,
+	}
 }
 
 // phase2Keywords - keyword-based scoring

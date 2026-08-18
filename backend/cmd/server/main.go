@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"manara-dlp/internal/api"
+	"manara-dlp/internal/classification"
 	"manara-dlp/internal/config"
 	"manara-dlp/internal/db"
 	"manara-dlp/internal/endpoints"
@@ -83,6 +84,41 @@ func main() {
 
 	// WebSocket origin allowlist
 	websocket.AllowedOrigins = cfg.AllowedWSOrigins
+
+	// Wire the optional Presidio AI-analysis provider. When PRESIDIO_URL is
+	// configured, classification routes Phase 2.5 analysis to Presidio;
+	// otherwise the deterministic NoOpProvider is used. An unreachable or
+	// timed-out Presidio never blocks classification: the engine falls back to
+	// its deterministic findings. Semantic shadow mode (below) takes precedence
+	// over Presidio when both are configured.
+	if cfg.PresidioURL != "" {
+		presidioTimeout := time.Duration(cfg.PresidioTimeoutMs) * time.Millisecond
+		api.ClassificationProvider = classification.NewPresidioProvider(
+			cfg.PresidioURL,
+			&http.Client{Timeout: presidioTimeout},
+			presidioTimeout,
+		)
+		log.Printf("Presidio analysis provider enabled at %s (timeout %dms)", cfg.PresidioURL, cfg.PresidioTimeoutMs)
+	}
+
+	// Wire the optional semantic classifier in shadow mode. SEMANTIC_CLASSIFIER_MODE
+	// is validated at startup (only "disabled" or "shadow" are allowed). In
+	// shadow mode all semantic findings are marked ShadowOnly and can never
+	// influence enforcement. If shadow mode is configured without a URL, the
+	// deterministic provider (Presidio or NoOp) is used.
+	if cfg.SemanticClassifierMode == "shadow" {
+		if cfg.SemanticClassifierURL == "" {
+			log.Printf("WARNING: SEMANTIC_CLASSIFIER_MODE=shadow requires SEMANTIC_CLASSIFIER_URL; continuing with the deterministic provider")
+		} else {
+			semanticTimeout := time.Duration(cfg.SemanticClassifierTimeoutMs) * time.Millisecond
+			api.ClassificationProvider = classification.NewSemanticProvider(
+				cfg.SemanticClassifierURL,
+				&http.Client{Timeout: semanticTimeout},
+				semanticTimeout,
+			)
+			log.Printf("Semantic classifier shadow mode enabled at %s (timeout %dms)", cfg.SemanticClassifierURL, cfg.SemanticClassifierTimeoutMs)
+		}
+	}
 
 	// Build the license feature gate from server configuration. Cloud DSPM is
 	// enabled by listing it in LICENSE_FEATURES (e.g. LICENSE_FEATURES=cloud-dspm).

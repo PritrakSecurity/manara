@@ -149,7 +149,7 @@ func TestValidateFrenchNIR(t *testing.T) {
 		},
 		{
 			name:     "Valid 15-digit NIR with checksum",
-			nir:     "377123456789105",
+			nir:      "377123456789105",
 			expected: true,
 		},
 		// Invalid NIRs
@@ -236,33 +236,33 @@ func TestValidateIBAN(t *testing.T) {
 // TestFindCreditCards tests credit card finding
 func TestFindCreditCards(t *testing.T) {
 	tests := []struct {
-		name           string
-		text           string
-		expectedCount  int
+		name          string
+		text          string
+		expectedCount int
 	}{
 		{
-			name:           "Single valid credit card",
-			text:           "Please charge 4532015112830366 for the purchase",
-			expectedCount:  1,
+			name:          "Single valid credit card",
+			text:          "Please charge 4532015112830366 for the purchase",
+			expectedCount: 1,
 		},
 		{
-			name:           "Multiple credit cards",
-			text:           "Card 1: 4532015112830366 Card 2: 5425233010103442",
-			expectedCount:  2,
+			name:          "Multiple credit cards",
+			text:          "Card 1: 4532015112830366 Card 2: 5425233010103442",
+			expectedCount: 2,
 		},
 		{
-			name:           "No credit cards",
-			text:           "This is just regular text with no credit cards",
-			expectedCount:  0,
+			name:          "No credit cards",
+			text:          "This is just regular text with no credit cards",
+			expectedCount: 0,
 		},
 		{
-			name:           "Invalid credit card (failed Luhn)",
-			text:           "Invalid card: 4532015112830365",
-			expectedCount:  0,
+			name:          "Invalid credit card (failed Luhn)",
+			text:          "Invalid card: 4532015112830365",
+			expectedCount: 0,
 		},
 	}
 
-	pv := &PatternValidators{}
+	pv := NewPatternValidators()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := pv.FindCreditCards(test.text)
@@ -276,33 +276,33 @@ func TestFindCreditCards(t *testing.T) {
 // TestFindSSNs tests SSN finding
 func TestFindSSNs(t *testing.T) {
 	tests := []struct {
-		name           string
-		text           string
-		expectedCount  int
+		name          string
+		text          string
+		expectedCount int
 	}{
 		{
-			name:           "Single SSN",
-			text:           "Employee SSN: 123-45-6789",
-			expectedCount:  1,
+			name:          "Single SSN",
+			text:          "Employee SSN: 123-45-6789",
+			expectedCount: 1,
 		},
 		{
-			name:           "Multiple SSNs",
-			text:           "John: 123-45-6789 Jane: 456-78-9123",
-			expectedCount:  2,
+			name:          "Multiple SSNs",
+			text:          "John: 123-45-6789 Jane: 456-78-9123",
+			expectedCount: 2,
 		},
 		{
-			name:           "No SSNs",
-			text:           "No sensitive data here",
-			expectedCount:  0,
+			name:          "No SSNs",
+			text:          "No sensitive data here",
+			expectedCount: 0,
 		},
 		{
-			name:           "Invalid SSN (area code 000)",
-			text:           "Invalid: 000-12-3456",
-			expectedCount:  0,
+			name:          "Invalid SSN (area code 000)",
+			text:          "Invalid: 000-12-3456",
+			expectedCount: 0,
 		},
 	}
 
-	pv := &PatternValidators{}
+	pv := NewPatternValidators()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := pv.FindSSNs(test.text)
@@ -316,28 +316,28 @@ func TestFindSSNs(t *testing.T) {
 // TestFindFrenchNIRs tests French NIR finding
 func TestFindFrenchNIRs(t *testing.T) {
 	tests := []struct {
-		name           string
-		text           string
-		expectedCount  int
+		name          string
+		text          string
+		expectedCount int
 	}{
 		{
-			name:           "Single NIR",
-			text:           "French ID: 3771234567891",
-			expectedCount:  1,
+			name:          "Single NIR",
+			text:          "French ID: 3771234567891",
+			expectedCount: 1,
 		},
 		{
-			name:           "Multiple NIRs",
-			text:           "ID1: 3771234567891 ID2: 1771234567892",
-			expectedCount:  2,
+			name:          "Multiple NIRs",
+			text:          "ID1: 3771234567891 ID2: 1771234567892",
+			expectedCount: 2,
 		},
 		{
-			name:           "No NIRs",
-			text:           "No French IDs here",
-			expectedCount:  0,
+			name:          "No NIRs",
+			text:          "No French IDs here",
+			expectedCount: 0,
 		},
 	}
 
-	pv := &PatternValidators{}
+	pv := NewPatternValidators()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := pv.FindFrenchNIRs(test.text)
@@ -351,28 +351,28 @@ func TestFindFrenchNIRs(t *testing.T) {
 // TestFindIBANs tests IBAN finding
 func TestFindIBANs(t *testing.T) {
 	tests := []struct {
-		name           string
-		text           string
-		expectedCount  int
+		name          string
+		text          string
+		expectedCount int
 	}{
 		{
-			name:           "Single IBAN",
-			text:           "Bank account: GB82WEST12345698765432",
-			expectedCount:  1,
+			name:          "Single IBAN",
+			text:          "Bank account: GB82WEST12345698765432",
+			expectedCount: 1,
 		},
 		{
-			name:           "Multiple IBANs",
-			text:           "Account 1: GB82WEST12345698765432 Account 2: FR1420041010050500013M02606",
-			expectedCount:  2,
+			name:          "Multiple IBANs",
+			text:          "Account 1: GB82WEST12345698765432 Account 2: FR1420041010050500013M02606",
+			expectedCount: 2,
 		},
 		{
-			name:           "No IBANs",
-			text:           "No bank accounts",
-			expectedCount:  0,
+			name:          "No IBANs",
+			text:          "No bank accounts",
+			expectedCount: 0,
 		},
 	}
 
-	pv := &PatternValidators{}
+	pv := NewPatternValidators()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := pv.FindIBANs(test.text)
@@ -427,7 +427,7 @@ Customer Information:
 	}
 
 	result := ce.Classify(tmpFile)
-	
+
 	// File with multiple types of PII should be classified as HIGH risk
 	if result.Score < 80 {
 		t.Logf("expected high score for multi-type PII, got %v", result.Score)

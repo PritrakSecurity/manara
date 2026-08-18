@@ -1,7 +1,7 @@
 import React from 'react';
 
 type Size = 'sm' | 'md' | 'lg';
-type BadgeVariant = 'incident' | 'approval' | 'device' | 'severity' | 'classification';
+type BadgeVariant = 'incident' | 'approval' | 'device' | 'severity' | 'classification' | 'evidence';
 
 interface Tone {
   bg: string;
@@ -56,6 +56,14 @@ const classificationStyles: Record<string, Tone> = {
   PENDING: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
 };
 
+// Finding evidence strength: hard evidence (red), contextual (yellow),
+// shadow-only (blue).
+const evidenceStyles: Record<string, Tone> = {
+  'Hard Evidence': { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' },
+  Contextual: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' },
+  'Shadow Only': { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
+};
+
 const fallbackTone: Tone = { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/30' };
 
 export interface BadgeProps {
@@ -90,6 +98,10 @@ export const Badge: React.FC<BadgeProps> = ({ label, variant = 'incident', size 
     case 'classification':
       tone = classificationStyles[label] || classificationStyles.PRIVATE;
       display = label;
+      break;
+    case 'evidence':
+      tone = evidenceStyles[label] || fallbackTone;
+      display = label.replace(/_/g, ' ');
       break;
   }
 

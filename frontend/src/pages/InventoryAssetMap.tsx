@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, ShieldAlert, Database, Globe, Search, RefreshCw, FolderOpen, Inbox, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { FindingsCell, type FindingView } from '../components/FindingsCell';
 
 interface InventoryAsset {
   id: string;
@@ -15,6 +16,7 @@ interface InventoryAsset {
   exposure_level: string;
   risk_score: number;
   content_snippet: string;
+  findings?: FindingView[];
 }
 
 interface RiskDistribution {
@@ -284,6 +286,7 @@ export default function InventoryAssetMap() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Risk Score</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Exposure</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Snippet</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Findings</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">File Size</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Last Scanned</th>
                 </tr>
@@ -335,6 +338,9 @@ export default function InventoryAssetMap() {
                         ) : (
                           <span className="text-xs text-gray-400">—</span>
                         )}
+                      </td>
+                      <td className="px-6 py-3">
+                        <FindingsCell findings={asset.findings} />
                       </td>
                       <td className="px-6 py-3 text-sm text-gray-600">{formatBytes(asset.file_size_bytes)}</td>
                       <td className="px-6 py-3 text-sm text-gray-600">

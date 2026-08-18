@@ -41,6 +41,16 @@ func NewS3Connector(cfg AWSConfig) *S3Connector {
 	return newS3Connector(cfg, newAuthenticator(cfg), newSDKClientFactoryFromSession, classification.NewClassificationEngine(), scanner, nil)
 }
 
+// NewS3ConnectorWithEngine builds a production AWS S3 connector backed by the
+// AWS SDK using the provided classification engine (e.g. one wired to an
+// optional AI analysis provider). A nil engine falls back to the default.
+func NewS3ConnectorWithEngine(cfg AWSConfig, engine *classification.ClassificationEngine) *S3Connector {
+	cfg.ApplyDefaults()
+	scanner := classification.NewContentScanner()
+	scanner.SetMaxFileSize(int64(MaxObjectBytesAllowed))
+	return newS3Connector(cfg, newAuthenticator(cfg), newSDKClientFactoryFromSession, engine, scanner, nil)
+}
+
 // newS3Connector is the internal constructor used by production wiring and by
 // tests that substitute deterministic fakes.
 func newS3Connector(cfg AWSConfig, auth Authenticator, factory func(*Session) ClientFactory, engine *classification.ClassificationEngine, scanner *classification.ContentScanner, logger *log.Logger) *S3Connector {

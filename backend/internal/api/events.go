@@ -31,6 +31,7 @@ type FileEvent struct {
     OperationResult     string    `json:"operation_result"`
     Timestamp           time.Time `json:"timestamp"`
     RuleTriggered       string    `json:"rule_triggered,omitempty"` // NEW FOR V3.0: Name of rule that triggered classification
+    Findings            []findingView `json:"findings,omitempty"`
 }
 
 type EventBatch struct {
@@ -39,16 +40,21 @@ type EventBatch struct {
 }
 
 type EventsHandler struct {
-    db                   *sql.DB
-    classificationEngine *classification.ClassificationEngine
+	db                   *sql.DB
+	classificationEngine *classification.ClassificationEngine
 }
 
+// ClassificationProvider is the optional AI-analysis provider used by
+// classification engines. It is server-configured from PRESIDIO_URL; when nil
+// the deterministic NoOpProvider is used.
+var ClassificationProvider classification.AnalysisProvider
+
 func NewEventsHandler(db *sql.DB) *EventsHandler {
-    ce := classification.NewClassificationEngine()
-    return &EventsHandler{
-        db:                   db,
-        classificationEngine: ce,
-    }
+	ce := classification.NewEngineWithProvider(ClassificationProvider)
+	return &EventsHandler{
+		db:                   db,
+		classificationEngine: ce,
+	}
 }
 
 // SetRuleEngine allows wiring the classification rule engine (supports in-memory rules)
@@ -95,11 +101,14 @@ func (h *EventsHandler) ReceiveEventBatch(w http.ResponseWriter, r *http.Request
             classification = result.Classification
             classificationScore = result.Score
             riskLevel = result.RiskLevel
+            ev.Findings = toFindingViews(result.Findings)
             log.Printf("[CLASSIFICATION] File: %s | Classification: %s (%v) | Risk: %s | Elapsed: %dms", 
                 ev.FilePath, classification, classificationScore, riskLevel, result.ElapsedMs)
         }
 
-        insert := `INSERT INTO event_logs (id, device_id, event_type, file_path, file_name, file_size, file_extension, source_location, destination_location, classification, risk_level, keywords_found, process_name, username, operation_result, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`
+        findingsJSON, _ := json.Marshal(ev.Findings)
+
+        insert := `INSERT INTO event_logs (id, device_id, event_type, file_path, file_name, file_size, file_extension, source_location, destination_location, classification, risk_level, keywords_found, process_name, username, operation_result, created_at, findings) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`
 
         _, err := h.db.Exec(insert,
             eid,
@@ -118,6 +127,7 @@ func (h *EventsHandler) ReceiveEventBatch(w http.ResponseWriter, r *http.Request
             ev.Username,
             ev.OperationResult,
             ev.Timestamp,
+            findingsJSON,
         )
         if err != nil {
             log.Printf("[ERROR] Failed to insert event: %v", err)
@@ -165,7 +175,25 @@ func (h *EventsHandler) ClassifyFile(w http.ResponseWriter, r *http.Request) {
     result := h.classificationEngine.Classify(request.FilePath)
 
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(result)
+    json.NewEncoder(w).Encode(struct {
+        Classification string        `json:"classification"`
+        Score          float64       `json:"score"`
+        Confidence     float64       `json:"confidence"`
+        Explanation    string        `json:"explanation"`
+        RiskLevel      string        `json:"risk_level"`
+        ElapsedMs      int           `json:"elapsed_ms"`
+        RuleTriggered  string        `json:"rule_triggered,omitempty"`
+        Findings       []findingView `json:"findings,omitempty"`
+    }{
+        Classification: result.Classification,
+        Score:          result.Score,
+        Confidence:     result.Confidence,
+        Explanation:    result.Explanation,
+        RiskLevel:      result.RiskLevel,
+        ElapsedMs:      result.ElapsedMs,
+        RuleTriggered:  result.RuleTriggered,
+        Findings:       toFindingViews(result.Findings),
+    })
 }
 
 // GET /api/v1/event-logs
@@ -178,7 +206,7 @@ func (h *EventsHandler) ListEventLogs(w http.ResponseWriter, r *http.Request) {
     riskLevel := q.Get("risk_level")
     username := q.Get("username")
 
-    query := `SELECT id, device_id, event_type, file_path, file_name, file_size, file_extension, source_location, destination_location, classification, risk_level, keywords_found, process_name, username, operation_result, was_blocked, block_reason, created_at FROM event_logs WHERE 1=1`
+    query := `SELECT id, device_id, event_type, file_path, file_name, file_size, file_extension, source_location, destination_location, classification, risk_level, keywords_found, process_name, username, operation_result, was_blocked, block_reason, created_at, findings FROM event_logs WHERE 1=1`
     args := []interface{}{}
     idx := 1
 
@@ -215,34 +243,39 @@ func (h *EventsHandler) ListEventLogs(w http.ResponseWriter, r *http.Request) {
     defer rows.Close()
 
     type EventLog struct {
-        ID                  string    `json:"id"`
-        DeviceID            string    `json:"device_id"`
-        EventType           string    `json:"event_type"`
-        FilePath            string    `json:"file_path"`
-        FileName            string    `json:"file_name"`
-        FileSize            int64     `json:"file_size"`
-        FileExtension       string    `json:"file_extension"`
-        SourceLocation      string    `json:"source_location"`
-        DestinationLocation string    `json:"destination_location"`
-        Classification      string    `json:"classification"`
-        RiskLevel           string    `json:"risk_level"`
-        KeywordsFound       []string  `json:"keywords_found"`
-        ProcessName         string    `json:"process_name"`
-        Username            string    `json:"username"`
-        OperationResult     string    `json:"operation_result"`
-        WasBlocked          bool      `json:"was_blocked"`
-        BlockReason         string    `json:"block_reason"`
-        CreatedAt           time.Time `json:"created_at"`
+        ID                  string        `json:"id"`
+        DeviceID            string        `json:"device_id"`
+        EventType           string        `json:"event_type"`
+        FilePath            string        `json:"file_path"`
+        FileName            string        `json:"file_name"`
+        FileSize            int64         `json:"file_size"`
+        FileExtension       string        `json:"file_extension"`
+        SourceLocation      string        `json:"source_location"`
+        DestinationLocation string        `json:"destination_location"`
+        Classification      string        `json:"classification"`
+        RiskLevel           string        `json:"risk_level"`
+        KeywordsFound       []string      `json:"keywords_found"`
+        ProcessName         string        `json:"process_name"`
+        Username            string        `json:"username"`
+        OperationResult     string        `json:"operation_result"`
+        WasBlocked          bool          `json:"was_blocked"`
+        BlockReason         string        `json:"block_reason"`
+        CreatedAt           time.Time     `json:"created_at"`
+        Findings            []findingView `json:"findings,omitempty"`
     }
 
     events := []EventLog{}
     for rows.Next() {
         var el EventLog
         var keywords []string
-        if err := rows.Scan(&el.ID, &el.DeviceID, &el.EventType, &el.FilePath, &el.FileName, &el.FileSize, &el.FileExtension, &el.SourceLocation, &el.DestinationLocation, &el.Classification, &el.RiskLevel, pq.Array(&keywords), &el.ProcessName, &el.Username, &el.OperationResult, &el.WasBlocked, &el.BlockReason, &el.CreatedAt); err != nil {
+        var findingsRaw []byte
+        if err := rows.Scan(&el.ID, &el.DeviceID, &el.EventType, &el.FilePath, &el.FileName, &el.FileSize, &el.FileExtension, &el.SourceLocation, &el.DestinationLocation, &el.Classification, &el.RiskLevel, pq.Array(&keywords), &el.ProcessName, &el.Username, &el.OperationResult, &el.WasBlocked, &el.BlockReason, &el.CreatedAt, &findingsRaw); err != nil {
             continue
         }
         el.KeywordsFound = keywords
+        if len(findingsRaw) > 0 {
+            _ = json.Unmarshal(findingsRaw, &el.Findings)
+        }
         events = append(events, el)
     }
 

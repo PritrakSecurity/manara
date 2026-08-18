@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"manara-dlp/internal/classification"
 	"manara-dlp/internal/dspm/cloud"
 	"manara-dlp/internal/dspm/cloud/aws"
 	"manara-dlp/internal/license"
@@ -37,7 +38,8 @@ func NewCloudHandler(licSvc *license.Service) *CloudHandler {
 		licSvc:       licSvc,
 		allowProfile: AllowAWSProfile,
 		newConnector: func(cfg aws.AWSConfig) (cloud.Connector, error) {
-			return aws.NewS3Connector(cfg), nil
+			engine := classification.NewEngineWithProvider(ClassificationProvider)
+			return aws.NewS3ConnectorWithEngine(cfg, engine), nil
 		},
 	}
 }

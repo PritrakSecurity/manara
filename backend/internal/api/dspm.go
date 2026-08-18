@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"manara-dlp/internal/classification"
 )
 
 var (
@@ -32,19 +34,20 @@ func NewDSPMHandler(db *sql.DB) *DSPMHandler {
 
 // inventoryAsset mirrors the inventory_assets schema (migration 015).
 type inventoryAsset struct {
-	ID             string    `json:"id"`
-	FilePath       string    `json:"file_path"`
-	FileHashSha256 string    `json:"file_hash_sha256"`
-	OwnerUserID    string    `json:"owner_user_id"`
-	Classification string    `json:"classification"`
-	FileSizeBytes  int64     `json:"file_size_bytes"`
-	LastAccessedAt time.Time `json:"last_accessed_at"`
-	FirstScannedAt time.Time `json:"first_scanned_at"`
-	CreatedAt      time.Time `json:"created_at"`
-	ExposureLevel  string    `json:"exposure_level"`
-	RiskScore      int       `json:"risk_score"`
-	ContentSnippet string    `json:"content_snippet"`
-	OwnerSID       string    `json:"owner_sid"`
+	ID             string        `json:"id"`
+	FilePath       string        `json:"file_path"`
+	FileHashSha256 string        `json:"file_hash_sha256"`
+	OwnerUserID    string        `json:"owner_user_id"`
+	Classification string        `json:"classification"`
+	FileSizeBytes  int64         `json:"file_size_bytes"`
+	LastAccessedAt time.Time     `json:"last_accessed_at"`
+	FirstScannedAt time.Time     `json:"first_scanned_at"`
+	CreatedAt      time.Time     `json:"created_at"`
+	ExposureLevel  string        `json:"exposure_level"`
+	RiskScore      int           `json:"risk_score"`
+	ContentSnippet string        `json:"content_snippet"`
+	OwnerSID       string        `json:"owner_sid"`
+	Findings       []findingView `json:"findings,omitempty"`
 }
 
 // HandleInventoryUpsert handles POST /api/v1/dspm/inventory
@@ -64,6 +67,7 @@ func (h *DSPMHandler) HandleInventoryUpsert(w http.ResponseWriter, r *http.Reque
 		RiskScore       int      `json:"risk_score"`
 		ContentSnippet  string   `json:"content_snippet"`
 		OwnerSID        string   `json:"owner_sid"`
+		Findings        []classification.Finding `json:"findings"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -107,24 +111,31 @@ func (h *DSPMHandler) HandleInventoryUpsert(w http.ResponseWriter, r *http.Reque
 
 	maskedSnippet := MaskSensitiveData(req.ContentSnippet)
 
+	findingsJSON, err := marshalFindings(req.Findings)
+	if err != nil {
+		http.Error(w, "invalid findings", http.StatusBadRequest)
+		return
+	}
+
 	if err == sql.ErrNoRows {
 		_, err = h.db.Exec(`
 			INSERT INTO inventory_assets
 				(id, file_path, file_hash_sha256, owner_user_id, classification,
 				 file_size_bytes, last_accessed_at, first_scanned_at, created_at,
-				 exposure_level, risk_score, content_snippet, owner_sid)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), $8, $9, $10, $11)
+				 exposure_level, risk_score, content_snippet, owner_sid, findings)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), $8, $9, $10, $11, $12)
 		`, uuid.New().String(), req.FilePath, req.FileHash, owner, req.Classification,
-			req.FileSize, now, req.ExposureLevel, req.RiskScore, maskedSnippet, req.OwnerSID)
+			req.FileSize, now, req.ExposureLevel, req.RiskScore, maskedSnippet, req.OwnerSID, findingsJSON)
 	} else if err == nil {
 		_, err = h.db.Exec(`
 			UPDATE inventory_assets
 			SET file_path = $1, owner_user_id = $2, classification = $3,
 			    file_size_bytes = $4, last_accessed_at = $5,
-			    exposure_level = $6, risk_score = $7, content_snippet = $8, owner_sid = $9
+			    exposure_level = $6, risk_score = $7, content_snippet = $8, owner_sid = $9,
+			    findings = $11
 			WHERE file_hash_sha256 = $10
 		`, req.FilePath, owner, req.Classification, req.FileSize, now,
-			req.ExposureLevel, req.RiskScore, maskedSnippet, req.OwnerSID, req.FileHash)
+			req.ExposureLevel, req.RiskScore, maskedSnippet, req.OwnerSID, req.FileHash, findingsJSON)
 	}
 
 	if err != nil {
@@ -181,7 +192,7 @@ func (h *DSPMHandler) HandleInventoryList(w http.ResponseWriter, r *http.Request
 	query := `
 		SELECT id, file_path, file_hash_sha256, owner_user_id, classification,
 		       file_size_bytes, last_accessed_at, first_scanned_at, created_at,
-		       exposure_level, risk_score, content_snippet, owner_sid
+		       exposure_level, risk_score, content_snippet, owner_sid, findings
 		FROM inventory_assets` + where +
 		fmt.Sprintf(" ORDER BY risk_score DESC, last_accessed_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
 	args = append(args, limit, offset)
@@ -197,10 +208,14 @@ func (h *DSPMHandler) HandleInventoryList(w http.ResponseWriter, r *http.Request
 	assets := []inventoryAsset{}
 	for rows.Next() {
 		var a inventoryAsset
+		var findingsRaw []byte
 		if err := rows.Scan(&a.ID, &a.FilePath, &a.FileHashSha256, &a.OwnerUserID,
 			&a.Classification, &a.FileSizeBytes, &a.LastAccessedAt, &a.FirstScannedAt, &a.CreatedAt,
-			&a.ExposureLevel, &a.RiskScore, &a.ContentSnippet, &a.OwnerSID); err != nil {
+			&a.ExposureLevel, &a.RiskScore, &a.ContentSnippet, &a.OwnerSID, &findingsRaw); err != nil {
 			continue
+		}
+		if len(findingsRaw) > 0 {
+			_ = json.Unmarshal(findingsRaw, &a.Findings)
 		}
 		assets = append(assets, a)
 	}

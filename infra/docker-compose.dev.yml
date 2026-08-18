@@ -30,6 +30,10 @@ services:
       TLS_CERT_PATH: /certs/server.crt
       TLS_KEY_PATH: /certs/server.key
       LOG_LEVEL: INFO
+      # Optional AI-assisted classification via Presidio. Uncomment and enable
+      # the "presidio" profile to route Phase 2.5 analysis to the analyzer:
+      #   docker compose -f infra/docker-compose.dev.yml --profile presidio up
+      # PRESIDIO_URL: http://presidio-analyzer:3000
     ports:
       - "50051:50051"
       - "8080:8080"
@@ -40,6 +44,28 @@ services:
       postgres:
         condition: service_healthy
     command: go run ./cmd/server/main.go
+
+  presidio-analyzer:
+    # Optional AI-assisted classification (Presidio). Only started when the
+    # "presidio" profile is explicitly enabled, e.g.:
+    #   docker compose -f infra/docker-compose.dev.yml --profile presidio up
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    container_name: dlp-presidio-analyzer
+    profiles:
+      - presidio
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      # Start with the default recognizers only (no external database needed).
+      # Presidio downloads its NLP model on first start; see start_period below.
+    # NOTE: no ports mapping — the analyzer is reachable only on the internal
+    # Docker network as presidio-analyzer:3000, never from the host.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:3000/healthz', timeout=2).status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build:

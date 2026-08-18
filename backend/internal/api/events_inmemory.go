@@ -26,7 +26,7 @@ type InMemoryEventsHandler struct {
 
 func NewInMemoryEventsHandler() *InMemoryEventsHandler {
 	h := &InMemoryEventsHandler{
-		classifier:    classification.NewClassificationEngine(),
+		classifier:    classification.NewEngineWithProvider(ClassificationProvider),
 		ruleEngine:    nil,
 		pendingEvents: make(map[string]string),
 		pendingExpiry: make(map[string]time.Time),

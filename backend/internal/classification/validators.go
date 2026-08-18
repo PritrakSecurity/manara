@@ -30,66 +30,98 @@ func NewPatternValidators() PatternValidators {
 
 // FindCreditCards finds valid credit card numbers in content
 func (pv *PatternValidators) FindCreditCards(content string) []string {
-	matches := pv.ccRegex.FindAllString(content, -1)
 	var validCards []string
+	for _, m := range pv.FindCreditCardIndexes(content) {
+		validCards = append(validCards, digitsOnly(content[m[0]:m[1]]))
+	}
+	return validCards
+}
 
-	for _, match := range matches {
-		// Remove non-digits
-		digits := strings.Map(func(r rune) rune {
-			if r >= '0' && r <= '9' {
-				return r
-			}
-			return -1
-		}, match)
-
-		if pv.ValidateLuhn(digits) {
-			validCards = append(validCards, digits)
+// FindCreditCardIndexes returns byte ranges of Luhn-valid credit card numbers.
+func (pv *PatternValidators) FindCreditCardIndexes(content string) [][2]int {
+	if pv.ccRegex == nil {
+		return nil
+	}
+	matches := pv.ccRegex.FindAllStringIndex(content, -1)
+	indexes := make([][2]int, 0, len(matches))
+	for _, m := range matches {
+		if pv.ValidateLuhn(digitsOnly(content[m[0]:m[1]])) {
+			indexes = append(indexes, [2]int{m[0], m[1]})
 		}
 	}
-
-	return validCards
+	return indexes
 }
 
 // FindSSNs finds valid SSN patterns
 func (pv *PatternValidators) FindSSNs(content string) []string {
-	matches := pv.ssnRegex.FindAllString(content, -1)
 	var validSSNs []string
+	for _, m := range pv.FindSSNIndexes(content) {
+		validSSNs = append(validSSNs, content[m[0]:m[1]])
+	}
+	return validSSNs
+}
 
-	for _, match := range matches {
-		if pv.ValidateSSN(match) {
-			validSSNs = append(validSSNs, match)
+// FindSSNIndexes returns byte ranges of structurally valid SSN patterns.
+func (pv *PatternValidators) FindSSNIndexes(content string) [][2]int {
+	if pv.ssnRegex == nil {
+		return nil
+	}
+	matches := pv.ssnRegex.FindAllStringIndex(content, -1)
+	indexes := make([][2]int, 0, len(matches))
+	for _, m := range matches {
+		if pv.ValidateSSN(content[m[0]:m[1]]) {
+			indexes = append(indexes, [2]int{m[0], m[1]})
 		}
 	}
-
-	return validSSNs
+	return indexes
 }
 
 // FindFrenchNIRs finds French NIR numbers
 func (pv *PatternValidators) FindFrenchNIRs(content string) []string {
-	matches := pv.nirRegex.FindAllString(content, -1)
 	var validNIRs []string
+	for _, m := range pv.FindFrenchNIRIndexes(content) {
+		validNIRs = append(validNIRs, content[m[0]:m[1]])
+	}
+	return validNIRs
+}
 
-	for _, match := range matches {
-		if pv.ValidateFrenchNIR(match) {
-			validNIRs = append(validNIRs, match)
+// FindFrenchNIRIndexes returns byte ranges of structurally valid French NIRs.
+func (pv *PatternValidators) FindFrenchNIRIndexes(content string) [][2]int {
+	if pv.nirRegex == nil {
+		return nil
+	}
+	matches := pv.nirRegex.FindAllStringIndex(content, -1)
+	indexes := make([][2]int, 0, len(matches))
+	for _, m := range matches {
+		if pv.ValidateFrenchNIR(content[m[0]:m[1]]) {
+			indexes = append(indexes, [2]int{m[0], m[1]})
 		}
 	}
-
-	return validNIRs
+	return indexes
 }
 
 // FindIBANs finds IBAN patterns
 func (pv *PatternValidators) FindIBANs(content string) []string {
-	matches := pv.ibanRegex.FindAllString(content, -1)
 	var validIBANs []string
+	for _, m := range pv.FindIBANIndexes(content) {
+		validIBANs = append(validIBANs, content[m[0]:m[1]])
+	}
+	return validIBANs
+}
 
-	for _, match := range matches {
-		if pv.ValidateIBAN(match) {
-			validIBANs = append(validIBANs, match)
+// FindIBANIndexes returns byte ranges of structurally valid IBANs.
+func (pv *PatternValidators) FindIBANIndexes(content string) [][2]int {
+	if pv.ibanRegex == nil {
+		return nil
+	}
+	matches := pv.ibanRegex.FindAllStringIndex(content, -1)
+	indexes := make([][2]int, 0, len(matches))
+	for _, m := range matches {
+		if pv.ValidateIBAN(content[m[0]:m[1]]) {
+			indexes = append(indexes, [2]int{m[0], m[1]})
 		}
 	}
-
-	return validIBANs
+	return indexes
 }
 
 // ValidateLuhn validates credit card using Luhn algorithm
@@ -261,6 +293,16 @@ func modCheck(numStr string, mod int) int {
 }
 
 // Helper functions
+
+// digitsOnly removes all non-digit characters from s.
+func digitsOnly(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, s)
+}
 
 func isAlpha(s string) bool {
 	for _, ch := range s {

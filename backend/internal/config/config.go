@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -24,8 +26,13 @@ type Config struct {
 	AllowedOrigins   []string
 	AdminEmail       string
 	AdminPassword    string
-	EnabledFeatures  []string
-	AllowAWSProfile  bool
+	EnabledFeatures         []string
+	AllowAWSProfile         bool
+	PresidioURL             string
+	PresidioTimeoutMs       int
+	SemanticClassifierMode  string
+	SemanticClassifierURL   string
+	SemanticClassifierTimeoutMs int
 }
 
 // LoadFromEnv loads configuration from environment variables.
@@ -54,6 +61,16 @@ func LoadFromEnv() (*Config, error) {
 		allowedOrigins = parseCSV(os.Getenv("ALLOWED_WEBSOCKET_ORIGINS"), []string{"http://localhost:5173", "http://localhost:8080"})
 	}
 
+	// SEMANTIC_CLASSIFIER_MODE gates the semantic classifier scaffold. Only
+	// "disabled" and "shadow" are supported; anything else is rejected so a
+	// typo can never silently disable or enable AI analysis.
+	semanticMode := getEnv("SEMANTIC_CLASSIFIER_MODE", "disabled")
+	switch semanticMode {
+	case "disabled", "shadow":
+	default:
+		return nil, fmt.Errorf("SEMANTIC_CLASSIFIER_MODE %q is invalid: must be \"disabled\" or \"shadow\"", semanticMode)
+	}
+
 	cfg := &Config{
 		DatabaseURL:      os.Getenv("DATABASE_URL"), // Required — no default; the server fails fast without it
 		JWTSecret:        jwtSecret,
@@ -71,6 +88,11 @@ func LoadFromEnv() (*Config, error) {
 		AdminPassword:    os.Getenv("ADMIN_PASSWORD"),
 		EnabledFeatures:  parseCSV(os.Getenv("LICENSE_FEATURES"), nil),
 		AllowAWSProfile:  strings.EqualFold(os.Getenv("ALLOW_AWS_PROFILE"), "true"),
+		PresidioURL:      os.Getenv("PRESIDIO_URL"), // Empty = Presidio disabled
+		PresidioTimeoutMs: getEnvInt("PRESIDIO_TIMEOUT_MS", 2000),
+		SemanticClassifierMode:    semanticMode,
+		SemanticClassifierURL:     os.Getenv("SEMANTIC_CLASSIFIER_URL"), // Empty = semantic classifier disabled
+		SemanticClassifierTimeoutMs: getEnvInt("SEMANTIC_CLASSIFIER_TIMEOUT_MS", 2000),
 	}
 	return cfg, nil
 }
@@ -78,6 +100,15 @@ func LoadFromEnv() (*Config, error) {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			return parsed
+		}
 	}
 	return defaultValue
 }

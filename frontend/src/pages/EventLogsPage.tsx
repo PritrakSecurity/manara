@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Filter, RefreshCw, AlertTriangle, CheckCircle, Wifi, WifiOff } from 'lucide-react';
 import { useEventStream } from '../hooks/useEventStream';
 import { apiClient } from '../api/client';
+import { FindingsCell, type FindingView } from '../components/FindingsCell';
 
 interface EventLog {
     id: string;
@@ -22,6 +23,7 @@ interface EventLog {
     was_blocked: boolean;
     block_reason: string;
     created_at: string;
+    findings?: FindingView[];
 }
 
 export function EventLogsPage() {
@@ -182,10 +184,10 @@ export function EventLogsPage() {
                 <div className="overflow-x-auto">
                     {loading ? <div className="p-8 text-center text-gray-500">Loading events...</div> : filteredEvents.length === 0 ? <div className="p-8 text-center text-gray-500">No events found</div> : (
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b"><tr><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Status</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Event</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">File</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">User</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Classification</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Risk</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Time</th></tr></thead>
+                            <thead className="bg-gray-50 border-b"><tr><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Status</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Event</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">File</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">User</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Classification</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Risk</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Findings</th><th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Time</th></tr></thead>
                             <tbody className="divide-y divide-gray-200">
                                 {filteredEvents.map(event => (
-                                    <tr key={event.id} className="hover:bg-gray-50"><td className="px-6 py-4">{getStatusIcon(event)}</td><td className="px-6 py-4"><span className="text-sm font-medium">{event.event_type}</span></td><td className="px-6 py-4"><div className="text-sm"><p className="font-medium">{event.file_name}</p><p className="text-gray-500 text-xs">{event.file_path}</p></div></td><td className="px-6 py-4 text-sm">{event.username || '-'}</td><td className="px-6 py-4"><span className={`text-xs px-2 py-1 rounded ${getClassificationColor(event.classification)}`}>{event.classification}</span></td><td className="px-6 py-4"><span className={`text-xs px-2 py-1 rounded ${getRiskColor(event.risk_level)}`}>{event.risk_level}</span></td><td className="px-6 py-4 text-sm text-gray-500">{new Date(event.created_at).toLocaleString()}</td></tr>
+                                    <tr key={event.id} className="hover:bg-gray-50"><td className="px-6 py-4">{getStatusIcon(event)}</td><td className="px-6 py-4"><span className="text-sm font-medium">{event.event_type}</span></td><td className="px-6 py-4"><div className="text-sm"><p className="font-medium">{event.file_name}</p><p className="text-gray-500 text-xs">{event.file_path}</p></div></td><td className="px-6 py-4 text-sm">{event.username || '-'}</td><td className="px-6 py-4"><span className={`text-xs px-2 py-1 rounded ${getClassificationColor(event.classification)}`}>{event.classification}</span></td><td className="px-6 py-4"><span className={`text-xs px-2 py-1 rounded ${getRiskColor(event.risk_level)}`}>{event.risk_level}</span></td><td className="px-6 py-4"><FindingsCell findings={event.findings} /></td><td className="px-6 py-4 text-sm text-gray-500">{new Date(event.created_at).toLocaleString()}</td></tr>
                                 ))}
                             </tbody>
                         </table>

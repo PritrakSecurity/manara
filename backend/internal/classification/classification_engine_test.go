@@ -3,6 +3,7 @@ package classification
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -204,26 +205,26 @@ func TestPhase3ContextLogic(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	tests := []struct {
-		name              string
-		fileName          string
-		content           string
-		shouldBoost       bool
-		minExpectedScore  float64
+		name             string
+		fileName         string
+		content          string
+		shouldBoost      bool
+		minExpectedScore float64
 	}{
 		{
-			name:              "Large CSV with PII",
-			fileName:          "employees.csv",
-			content:           "id,name,ssn,salary\n1,John,123-45-6789,50000\n2,Jane,987-65-4321,60000\n3,Bob,456-78-9123,55000\n" + 
+			name:     "Large CSV with PII",
+			fileName: "employees.csv",
+			content: "id,name,ssn,salary\n1,John,123-45-6789,50000\n2,Jane,987-65-4321,60000\n3,Bob,456-78-9123,55000\n" +
 				repeatString("4,Alice,222-33-4444,65000\n", 100),
 			shouldBoost:      true,
 			minExpectedScore: 60,
 		},
 		{
-			name:              "Python Source Code",
-			fileName:          "app.py",
-			content:           "import requests\ndb_password = 'secret123'\napi_key = 'key123'\n",
-			shouldBoost:       true,
-			minExpectedScore:  40,
+			name:             "Python Source Code",
+			fileName:         "app.py",
+			content:          "import requests\ndb_password = 'secret123'\napi_key = 'key123'\n",
+			shouldBoost:      true,
+			minExpectedScore: 40,
 		},
 	}
 
@@ -248,7 +249,7 @@ func TestPhase4DecisionMapping(t *testing.T) {
 	ce := NewClassificationEngine()
 
 	tests := []struct {
-		filePath           string
+		filePath               string
 		expectedClassification string
 	}{
 		{"C:\\empty_file.txt", "PUBLIC"},
@@ -260,7 +261,7 @@ func TestPhase4DecisionMapping(t *testing.T) {
 	for _, test := range tests {
 		result := ce.Classify(test.filePath)
 		if result.Classification != test.expectedClassification {
-			t.Logf("file: %s | expected: %s, got: %s (score: %v)", 
+			t.Logf("file: %s | expected: %s, got: %s (score: %v)",
 				test.filePath, test.expectedClassification, result.Classification, result.Score)
 		}
 	}
@@ -355,9 +356,5 @@ func TestBoundaryScores(t *testing.T) {
 
 // Helper function to repeat a string
 func repeatString(s string, count int) string {
-	result := ""
-	for i := 0; i < count; i++ {
-		result += s
-	}
-	return result
+	return strings.Repeat(s, count)
 }
