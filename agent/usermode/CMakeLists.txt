@@ -22,6 +22,8 @@ add_executable(PritrakDLP
     policy/PolicyEngine.h
     telemetry/TelemetryCollector.cpp
     telemetry/TelemetryCollector.h
+    telemetry/ClipboardMonitor.cpp
+    telemetry/ClipboardMonitor.h
     comms/SecureComm.cpp
     comms/SecureComm.h
     comms/HttpClient.cpp

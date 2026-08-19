@@ -119,6 +119,46 @@ public:
      */
     static std::vector<std::string> ScanTextForPII(const std::string& text);
 
+    // --- Typed findings (privacy-safe metadata) ------------------------------
+
+    enum class PiiEntity { Unknown, CreditCard, Ssn, ApiKey };
+    enum class EvidenceStrength { Unknown, Moderate, Strong };
+
+    /**
+     * A typed finding. NEVER contains the matched raw value: only the entity
+     * type, occurrence count, offsets of the first occurrence and an evidence
+     * strength flag. Raw values may exist briefly inside the scanner but are
+     * never returned, logged, persisted or transmitted.
+     */
+    struct PiiFinding {
+        PiiEntity entity = PiiEntity::Unknown;
+        size_t count = 0;
+        size_t startOffset = 0;
+        size_t endOffset = 0;
+        EvidenceStrength strength = EvidenceStrength::Unknown;
+        bool hardEvidence = false;   // Luhn-validated credit card
+    };
+
+    /**
+     * Structured scan result. scannerError distinguishes "scanner failed"
+     * (never to be treated as clean content) from "no findings".
+     */
+    struct PiiScanResult {
+        std::vector<PiiFinding> findings;
+        bool scannerError = false;
+    };
+
+    /**
+     * Scan UTF-8 text and return typed findings (no raw values). Shares a
+     * single internal scanning implementation with ScanTextForPII so the
+     * detectors are never duplicated. Only Luhn-validated credit cards are
+     * hard evidence; SSNs/API keys are structural (moderate).
+     */
+    static PiiScanResult ScanTextForPIITyped(const std::string& text);
+
+    /** Stable display name for an entity type (e.g. "CREDIT_CARD"). */
+    static const char* PiiEntityName(PiiEntity entity);
+
     /** Classic Luhn checksum over a digit string. */
     static bool IsValidLuhn(const std::string& digits);
 

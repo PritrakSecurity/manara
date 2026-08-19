@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cstddef>
 #include <nlohmann/json.hpp>
 
 /**
@@ -85,6 +86,30 @@ public:
      * "MONITOR_ONLY" (fail-safe) when not configured.
      */
     std::string GetEnforcementMode() const;
+
+    // ------------------------------------------------------------------
+    // Phase 1 Clipboard Visibility configuration (detection-only).
+    // Conservative defaults; invalid values are rejected by the consumer and
+    // replaced with defaults (see ValidateClipboardConfig in ClipboardMonitor).
+    // ------------------------------------------------------------------
+
+    /** Whether clipboard visibility is enabled (default true). */
+    bool GetClipboardMonitoringEnabled() const;
+
+    /** Maximum clipboard text to capture, in UTF-16 bytes (default 256 KiB). */
+    size_t GetClipboardMaxUtf16Bytes() const;
+
+    /** Bounded clipboard-open retry count (default 5). */
+    int GetClipboardOpenRetryCount() const;
+
+    /** Delay between clipboard-open retries in ms (default 50). */
+    int GetClipboardOpenRetryDelayMs() const;
+
+    /** Maximum queued clipboard events (latest-value slots; default 1). */
+    size_t GetClipboardMaxQueuedEvents() const;
+
+    /** Classification timeout guard in ms (default 2000). */
+    int GetClipboardScanTimeoutMs() const;
 
 private:
     Config() = default;

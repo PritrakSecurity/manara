@@ -1,5 +1,6 @@
 #define INITGUID
 #include "TelemetryCollector.h"
+#include "ClipboardMonitor.h"
 #include "../quarantine/QuarantineManager.h"
 #include "../../common/utils/logging.h"
 #include "../../common/config/Config.h"
@@ -76,6 +77,7 @@ void TelemetryCollector::Start() {
 
     running_ = true;
     monitorThread_ = std::thread(&TelemetryCollector::MonitorLoop, this);
+    StartClipboardMonitoring();
     LOG_INFO("Telemetry collector started");
 }
 
@@ -85,6 +87,13 @@ void TelemetryCollector::Stop() {
     }
 
     running_ = false;
+
+    // Stop clipboard visibility first: joins its listener + worker threads so
+    // no callback can touch collector-owned objects afterwards.
+    if (clipboardMonitor_) {
+        clipboardMonitor_->Stop();
+        clipboardMonitor_.reset();
+    }
 
     if (monitorThread_.joinable()) {
         monitorThread_.join();
@@ -132,7 +141,6 @@ void TelemetryCollector::MonitorLoop() {
         MonitorFileSystem();
         MonitorUSB();
         MonitorNetwork();
-        MonitorClipboard();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
@@ -257,10 +265,24 @@ void TelemetryCollector::MonitorNetwork() {
     // Simplified implementation
 }
 
-void TelemetryCollector::MonitorClipboard() {
-    // Clipboard monitoring via Windows clipboard API
-    if (IsClipboardFormatAvailable(CF_TEXT) || IsClipboardFormatAvailable(CF_UNICODETEXT)) {
-        // Detect clipboard access
-        // Create event and queue it
+void TelemetryCollector::StartClipboardMonitoring() {
+    // Phase 1 Clipboard Visibility (detection-only). Runs on a dedicated
+    // listener thread + worker thread owned by ClipboardMonitor. Only active
+    // in interactive (non-Session-0) sessions; in Session 0 it logs a
+    // privacy-safe warning and stays disabled (see ClipboardMonitor.cpp).
+    namespace dlp = Pritrak::DLP;
+
+    dlp::ClipboardConfig cfg;
+    cfg.enabled = Config::GetInstance().GetClipboardMonitoringEnabled();
+    cfg.maxUtf16Bytes = static_cast<size_t>(Config::GetInstance().GetClipboardMaxUtf16Bytes());
+    cfg.openRetryCount = Config::GetInstance().GetClipboardOpenRetryCount();
+    cfg.openRetryDelayMs = Config::GetInstance().GetClipboardOpenRetryDelayMs();
+    cfg.maxQueuedEvents = static_cast<size_t>(Config::GetInstance().GetClipboardMaxQueuedEvents());
+    cfg.scanTimeoutMs = Config::GetInstance().GetClipboardScanTimeoutMs();
+
+    clipboardMonitor_ = std::make_unique<dlp::ClipboardMonitor>();
+    clipboardMonitor_->Configure(cfg);
+    if (!clipboardMonitor_->Start()) {
+        LOG_INFO("Clipboard monitoring is not active in this session");
     }
 }

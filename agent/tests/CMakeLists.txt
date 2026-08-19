@@ -100,13 +100,16 @@ add_executable(PritrakDLPTests
     test_main.cpp
     dci_tests.cpp
     pii_tests.cpp
+    clipboard_tests.cpp
     ../usermode/classification/DeepContentInspector.cpp
+    ../usermode/telemetry/ClipboardMonitor.cpp
     ../common/utils/logging.cpp
 )
 
 target_include_directories(PritrakDLPTests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../usermode/classification
+    ${CMAKE_CURRENT_SOURCE_DIR}/../usermode/telemetry
     ${CMAKE_CURRENT_SOURCE_DIR}/../common
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/utils
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/shared
@@ -117,6 +120,10 @@ target_link_libraries(PritrakDLPTests
     pugixml
     re2::re2
 )
+
+if(WIN32)
+    target_link_libraries(PritrakDLPTests user32)
+endif()
 
 enable_testing()
 add_test(NAME PritrakDLPTests COMMAND PritrakDLPTests)

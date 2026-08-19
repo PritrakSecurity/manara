@@ -125,3 +125,51 @@ std::string Config::GetEnforcementMode() const {
     }
     return "MONITOR_ONLY";
 }
+
+bool Config::GetClipboardMonitoringEnabled() const {
+    if (config_.contains("clipboard") && config_["clipboard"].contains("enabled") &&
+        config_["clipboard"]["enabled"].is_boolean()) {
+        return config_["clipboard"]["enabled"].get<bool>();
+    }
+    return true;
+}
+
+size_t Config::GetClipboardMaxUtf16Bytes() const {
+    if (config_.contains("clipboard") && config_["clipboard"].contains("max_utf16_bytes") &&
+        config_["clipboard"]["max_utf16_bytes"].is_number()) {
+        return static_cast<size_t>(config_["clipboard"]["max_utf16_bytes"].get<int64_t>());
+    }
+    return 256ULL * 1024; // 256 KiB
+}
+
+int Config::GetClipboardOpenRetryCount() const {
+    if (config_.contains("clipboard") && config_["clipboard"].contains("open_retry_count") &&
+        config_["clipboard"]["open_retry_count"].is_number()) {
+        return config_["clipboard"]["open_retry_count"].get<int>();
+    }
+    return 5;
+}
+
+int Config::GetClipboardOpenRetryDelayMs() const {
+    if (config_.contains("clipboard") && config_["clipboard"].contains("open_retry_delay_ms") &&
+        config_["clipboard"]["open_retry_delay_ms"].is_number()) {
+        return config_["clipboard"]["open_retry_delay_ms"].get<int>();
+    }
+    return 50;
+}
+
+size_t Config::GetClipboardMaxQueuedEvents() const {
+    if (config_.contains("clipboard") && config_["clipboard"].contains("max_queued_events") &&
+        config_["clipboard"]["max_queued_events"].is_number()) {
+        return static_cast<size_t>(config_["clipboard"]["max_queued_events"].get<int64_t>());
+    }
+    return 1; // latest-value coalescing slot
+}
+
+int Config::GetClipboardScanTimeoutMs() const {
+    if (config_.contains("clipboard") && config_["clipboard"].contains("scan_timeout_ms") &&
+        config_["clipboard"]["scan_timeout_ms"].is_number()) {
+        return config_["clipboard"]["scan_timeout_ms"].get<int>();
+    }
+    return 2000;
+}

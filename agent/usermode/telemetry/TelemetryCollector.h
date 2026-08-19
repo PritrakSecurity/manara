@@ -9,9 +9,15 @@
 #include <windows.h>
 #include <unordered_set>
 #include <string>
+#include <memory>
 
-// Forward declaration
+// Forward declarations
 class QuarantineManager;
+namespace Pritrak {
+namespace DLP {
+class ClipboardMonitor;
+}
+}
 
 /**
  * Telemetry Collector
@@ -57,7 +63,7 @@ private:
     void MonitorFileSystem();
     void MonitorUSB();
     void MonitorNetwork();
-    void MonitorClipboard();
+    void StartClipboardMonitoring();
 
     // Event queue
     std::queue<Event> eventQueue_;
@@ -75,4 +81,8 @@ private:
 
     // Non-owning quarantine manager (never deletes files)
     QuarantineManager* quarantineManager_;
+
+    // Clipboard visibility (Phase 1, detection-only). Owned so its threads are
+    // stopped and joined before this collector is destroyed.
+    std::unique_ptr<Pritrak::DLP::ClipboardMonitor> clipboardMonitor_;
 };

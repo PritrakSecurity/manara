@@ -131,12 +131,16 @@ if (-not [string]::IsNullOrEmpty($env:VCPKG_ROOT)) {
     $vcpkgToolchain = "-DCMAKE_TOOLCHAIN_FILE=$($env:VCPKG_ROOT)\scripts\buildsystems\vcpkg.cmake"
 }
 
-& cmake -S $WrapperDir -B $OutDir -A x64 $vcpkgToolchain
+# Run CMake through cmd.exe and merge stderr into stdout INSIDE cmd, so that
+# CMake's stderr output (e.g. deprecation warnings) is not misread by
+# PowerShell 5.1 as a terminating NativeCommandError when
+# $ErrorActionPreference = "Stop". Exit codes still propagate correctly.
+cmd /c "cmake -S `"$WrapperDir`" -B `"$OutDir`" -A x64 $vcpkgToolchain 2>&1"
 if ($LASTEXITCODE -ne 0) { Fail "CMake configure failed (exit $LASTEXITCODE)." }
 
 # --- 5. CMake build -------------------------------------------------------
 Write-Step "Building PritrakDLP (Release x64)"
-& cmake --build $OutDir --config Release --target PritrakDLP
+cmd /c "cmake --build `"$OutDir`" --config Release --target PritrakDLP 2>&1"
 if ($LASTEXITCODE -ne 0) { Fail "CMake build failed (exit $LASTEXITCODE)." }
 
 # --- 6. Verify the executable ---------------------------------------------

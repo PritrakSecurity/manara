@@ -1017,8 +1017,23 @@ bool DeepContentInspector::IsValidLuhn(const std::string& digits) {
     return (sum % 10) == 0;
 }
 
-std::vector<std::string> DeepContentInspector::ScanTextForPII(const std::string& text) {
-    std::vector<std::string> matches;
+namespace {
+
+// One internal scanning pass shared by ScanTextForPII and ScanTextForPIITyped
+// so the detectors are never duplicated. Raw values are allowed here briefly
+// but never escape into the typed findings, logs, telemetry or persistence.
+struct RawMatch {
+    std::string value;
+    DeepContentInspector::PiiEntity entity = DeepContentInspector::PiiEntity::Unknown;
+    bool hard = false;                 // Luhn-validated credit card
+    size_t start = 0;
+    size_t end = 0;
+};
+
+// Returns false if the scanner itself failed (patterns could not compile).
+// Mirrors the previous std::regex behavior exactly.
+bool ScanAllText(const std::string& text, std::vector<RawMatch>& out) {
+    using PiiEntity = DeepContentInspector::PiiEntity;
 
     // Patterns are identical to the pre-existing std::regex implementation.
     static const re2::RE2 ccRegex(R"(\b((?:\d[ -]*?){13,16})\b)");
@@ -1028,17 +1043,17 @@ std::vector<std::string> DeepContentInspector::ScanTextForPII(const std::string&
 
     if (!ccRegex.ok() || !ssnRegex.ok() || !apiKeyRegex.ok()) {
         LOG_ERROR("DCI: failed to compile RE2 PII patterns");
-        return matches;
+        return false;
     }
 
-    auto consumeAll = [&matches](const std::string& source, const re2::RE2& re, bool luhnCheck) {
-        re2::StringPiece input(source);
+    auto consumeAll = [&out, &text](const re2::RE2& re, PiiEntity entity, bool luhnCheck) {
+        const char* base = text.data();
+        re2::StringPiece input(text);
         re2::StringPiece m;
         while (re2::RE2::FindAndConsume(&input, re, &m)) {
             std::string candidate(m.data(), m.size());
-            if (!luhnCheck) {
-                matches.push_back(candidate);
-            } else {
+            bool hard = false;
+            if (luhnCheck) {
                 std::string digits;
                 digits.reserve(candidate.size());
                 for (char c : candidate) {
@@ -1046,21 +1061,89 @@ std::vector<std::string> DeepContentInspector::ScanTextForPII(const std::string&
                         digits.push_back(c);
                     }
                 }
-                if (IsValidLuhn(digits)) {
-                    matches.push_back(candidate);
+                if (!DeepContentInspector::IsValidLuhn(digits)) {
+                    if (m.size() == 0) input.remove_prefix(1);
+                    continue; // not a valid card: skip
                 }
+                hard = true; // Luhn-validated => hard evidence
             }
+            RawMatch rm;
+            rm.value = std::move(candidate);
+            rm.entity = entity;
+            rm.hard = hard;
+            rm.start = static_cast<size_t>(m.data() - base);
+            rm.end = rm.start + m.size();
+            out.push_back(std::move(rm));
             if (m.size() == 0) {
                 input.remove_prefix(1); // guard against empty-match loops
             }
         }
     };
 
-    consumeAll(text, ccRegex, true);
-    consumeAll(text, ssnRegex, false);
-    consumeAll(text, apiKeyRegex, false);
+    consumeAll(ccRegex, PiiEntity::CreditCard, true);
+    consumeAll(ssnRegex, PiiEntity::Ssn, false);
+    consumeAll(apiKeyRegex, PiiEntity::ApiKey, false);
 
+    return true;
+}
+
+} // namespace
+
+std::vector<std::string> DeepContentInspector::ScanTextForPII(const std::string& text) {
+    std::vector<RawMatch> raw;
+    if (!ScanAllText(text, raw)) {
+        return {};
+    }
+    std::vector<std::string> matches;
+    matches.reserve(raw.size());
+    for (auto& r : raw) {
+        matches.push_back(std::move(r.value));
+    }
     return matches;
+}
+
+DeepContentInspector::PiiScanResult DeepContentInspector::ScanTextForPIITyped(
+    const std::string& text)
+{
+    PiiScanResult result;
+    std::vector<RawMatch> raw;
+    if (!ScanAllText(text, raw)) {
+        result.scannerError = true;
+        return result;
+    }
+
+    // Aggregate per entity: count occurrences, keep first offsets, and flag
+    // hard evidence if ANY occurrence of that entity was validated.
+    for (auto& r : raw) {
+        auto it = std::find_if(result.findings.begin(), result.findings.end(),
+            [&](const PiiFinding& f) { return f.entity == r.entity; });
+        if (it == result.findings.end()) {
+            PiiFinding f;
+            f.entity = r.entity;
+            f.count = 1;
+            f.startOffset = r.start;
+            f.endOffset = r.end;
+            f.hardEvidence = r.hard;
+            f.strength = r.hard ? EvidenceStrength::Strong : EvidenceStrength::Moderate;
+            result.findings.push_back(f);
+        } else {
+            it->count += 1;
+            if (r.hard) {
+                it->hardEvidence = true;
+                it->strength = EvidenceStrength::Strong;
+            }
+        }
+    }
+    return result;
+}
+
+const char* DeepContentInspector::PiiEntityName(PiiEntity entity) {
+    switch (entity) {
+        case PiiEntity::CreditCard: return "CREDIT_CARD";
+        case PiiEntity::Ssn:        return "SSN";
+        case PiiEntity::ApiKey:     return "API_KEY";
+        default:                    return "UNKNOWN";
+    }
 }
 
 std::string DeepContentInspector::MaskSensitiveData(const std::string& text) {
